@@ -163,6 +163,28 @@ clean (15 source files).
 
 **Next part**: Part 8 — FastMCP P2P transport + message protocol.
 
+## 2026-07-24 — Part 10 (Gatekeeper) done early, out of order
+
+**Files changed**: `src/police_thief/infra/gatekeeper.py` (`TokenBucket`, `QuotaManager`,
+`DOSDetector`, `Gatekeeper` 3-stage pipeline), `tests/unit/test_gatekeeper.py`.
+
+**Requirements completed**: FR-055 (Tested), NFR-006 Gatekeeper half (Implemented; the MCP-endpoint
+half of NFR-006 lands with Part 8).
+
+**Why out of order**: Gatekeeper has no dependency on FastMCP/networking and is fully deterministic
+given an injectable clock, so it was cheap to finish now rather than block on Part 8.
+
+**Tests executed**: `uv run pytest tests/unit -q` (86 tests total); new tests use a `FakeClock` to
+deterministically test token-bucket drain/refill/capacity-cap, quota-window reset, DOS-detector
+burst-lock (and that it doesn't self-heal without `reset()`), and the full 3-stage pipeline's
+verdicts. `ruff format`/`ruff check` clean; `mypy src` clean (17 source files).
+
+**Test results**: 86/86 passed.
+
+**Remaining issues**: none blocking.
+
+**Next part**: Part 8 — FastMCP P2P transport + message protocol.
+
 ## 2026-07-24 — Part 3 (deferred config loader) + strategy class loader
 
 **Files changed**: `src/police_thief/config.py` (`load_game_config`, `shared_config_hash`,

@@ -40,7 +40,7 @@ and every entry in `docs/progress.md`.
 | FR-052 | `domain/state_machine.py`; wired into `orchestrator.py` (Part 9) | `tests/unit/test_state_machine.py` | Tested (state machine) / Planned (orchestrator wiring) | architecture.md §5 |
 | FR-053 | `orchestrator.py` (Deadline Tracker) | `tests/network/test_timeout.py` | Planned | architecture.md §7 |
 | FR-054 | `infra/watchdog.py` | `tests/integration/test_orchestrator.py` | Planned | " |
-| FR-055 | `infra/gatekeeper.py` | `tests/unit/test_gatekeeper.py` | Planned | architecture.md §7 |
+| FR-055 | `infra/gatekeeper.py` (TokenBucket/QuotaManager/DOSDetector/Gatekeeper) | `tests/unit/test_gatekeeper.py` | Tested | architecture.md §7 |
 | FR-060 | `strategy/base.py` (BrainBase/ThiefBrain/PoliceBrain, build_belief_view), `strategy/heuristic.py` (default brains) | `tests/unit/test_strategy.py` | Tested | protocol.md §6, assumptions.md A-016 |
 | FR-061 | `strategy/llm_bluff.py` (Part 8) | `tests/unit/test_strategy.py` | Planned | assumptions.md A-005 |
 | FR-062 | `strategy/llm_bluff.py` (Part 8) | — | Planned | " |
@@ -63,7 +63,7 @@ and every entry in `docs/progress.md`.
 | NFR-003 | `orchestrator.py` shutdown path | `tests/network/test_shutdown.py` | Planned | architecture.md §6 |
 | NFR-004 | `logging_setup.py` | `tests/unit/test_logging_redaction.py` | Planned | testing_strategy.md §1 |
 | NFR-005 | `config.py` (`load_game_config`/`load_peer_config`) | `tests/unit/test_config.py` | Tested | protocol.md §5/§6 |
-| NFR-006 | `infra/gatekeeper.py`, `infra/mcp_server.py` | `tests/unit/test_gatekeeper.py` | Planned | architecture.md §7 |
+| NFR-006 | `infra/gatekeeper.py` (Gmail-side done); `infra/mcp_server.py` (Part 8, in progress) | `tests/unit/test_gatekeeper.py` | Implemented (Gatekeeper) / Planned (MCP endpoint) | architecture.md §7 |
 | NFR-007 | Step-0 declaration JSON emitter | manual + schema test | Planned | assumptions.md A-007 |
 | NFR-008 | `config.py::shared_config_hash` | `tests/unit/test_config.py` | Tested | protocol.md §5 |
 | PROTO-001..004 | `config.py`, `domain/crypto.py`, `infra/mcp_server.py` | `tests/protocol/` | Planned | protocol.md |
