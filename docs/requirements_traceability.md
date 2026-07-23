@@ -25,9 +25,9 @@ and every entry in `docs/progress.md`.
 | FR-018 | `domain/board.py` | `tests/unit/test_board.py` | Tested | requirements_analysis.md §2, assumptions.md A-013 |
 | FR-020 | `domain/scoring.py`, `domain/models.py` | `tests/unit/test_scoring.py` | Tested | assumptions.md A-001 |
 | FR-021 | `domain/scoring.py`; full wiring in `orchestrator.py` (Part 9) | `tests/unit/test_scoring.py` | Tested (scoring fn) / Planned (end-to-end) | assumptions.md A-014 |
-| FR-030 | `domain/scent.py` | `tests/unit/test_scent.py` | Planned | requirements_analysis.md §4 |
-| FR-031 | `config.py` | `tests/unit/test_config.py` | Planned | " |
-| FR-032 | `domain/scent.py`, `strategy/heuristic.py` | `tests/unit/test_scent.py`, `test_strategy.py` | Planned | " |
+| FR-030 | `domain/scent.py` | `tests/unit/test_scent.py` | Tested | requirements_analysis.md §4, assumptions.md A-015 |
+| FR-031 | `domain/models.py` (PheromoneConfig is fixed-at-parse; no mid-game mutation path exists) | `tests/unit/test_scent.py` | Implemented | " |
+| FR-032 | `domain/scent.py` (belief_map/most_likely_position); `strategy/heuristic.py` (Part 7) | `tests/unit/test_scent.py` | Tested (belief map) / Planned (heuristic brain) | " |
 | FR-033 | `strategy/qlearning.py` (optional) | — | Planned (bonus) | " |
 | FR-040 | `domain/crypto.py` | `tests/unit/test_crypto.py` | Tested | protocol.md §3 |
 | FR-041 | `domain/crypto.py` | `tests/unit/test_crypto.py` | Tested | " |

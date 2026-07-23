@@ -131,6 +131,21 @@ indistinguishable from a mutual double-disqualification and gives the honest sid
 general "the honest side should never be worse off than the cheater" spirit (§5.3.2 "the deception
 temptation" framing), without inventing a new, higher score class not present in Appendix F Table 17.
 
+### A-015 — Exact spatial falloff shape of the scent emission field
+
+Appendix F Table 16 mandates exactly three scent parameters: deposit intensity at the emitting
+cell (0.9), decay rate per turn (0.10), and emission field size (5×5). §4.3's Figure 4 shows one
+worked 5×5 example with specific per-cell numbers, but the accompanying prose only describes the
+falloff qualitatively ("intensity decreases the further from the center, per a radial
+distribution") — it does not give a formula that reproduces those exact numbers, and per the
+book's own foreword convention only Appendix F's three values are binding.
+**Decision**: `domain/scent.py::ScentField.deposit` uses a linear-in-Euclidean-distance falloff
+from the peak at the center to 0 at the field's outer radius. This reproduces the qualitative shape
+(peak at center, symmetric, decaying to near-zero at the corners) without claiming to match Figure
+4's specific numbers pixel-for-pixel, since those numbers are illustrative. Tests validate this
+project's own formula is internally consistent (peak at center, monotonic falloff, zero outside the
+field), not that it reproduces Figure 4 exactly.
+
 ### A-012 — Single-contributor project
 
 The working instructions describe a team ("every team member", "credit to all members"). This

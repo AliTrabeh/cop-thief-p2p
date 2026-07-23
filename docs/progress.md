@@ -112,3 +112,25 @@ illegal-transition-rejected-and-state-unchanged cases).
 **Remaining issues**: none blocking.
 
 **Next part**: Part 5 — scent/pheromone belief-map engine (`domain/scent.py`).
+
+## 2026-07-24 — Part 5: Scent/pheromone belief-map engine
+
+**Files changed**: `src/police_thief/domain/scent.py` (`ScentField` emission/decay,
+`belief_map`/`most_likely_position`), `tests/unit/test_scent.py`. New assumption A-015 documenting
+that the exact spatial falloff shape is an implementation choice (only center intensity, decay
+rate, and field size are mandatory per Appendix F Table 16).
+
+**Requirements completed**: FR-030 (Tested), FR-031 (Implemented — no mid-game mutation path for
+pheromone params exists at all, which is the strongest way to guarantee "fixed before game start"),
+FR-032 (belief map Tested; the heuristic brain that consumes it is Part 7).
+
+**Tests executed**: `uv run pytest tests/unit -q` (55 tests total); new scent tests include an
+exact numeric match of the decay formula, a reproduction of the book's own Figure 5 half-peak-at-
+turn-7 curve, re-emission steady-state, belief-map normalization (sums to 1), and argmax tracking
+the scent source. `ruff format`/`ruff check` clean; `mypy src` clean (13 source files).
+
+**Test results**: 55/55 passed.
+
+**Remaining issues**: none blocking.
+
+**Next part**: Part 7 — strategy modules (`strategy/base.py`, `strategy/heuristic.py`).
