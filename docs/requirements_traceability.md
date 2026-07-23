@@ -37,7 +37,7 @@ and every entry in `docs/progress.md`.
 | FR-045 | `gui/replay_viewer.py` | `tests/unit/test_replay_viewer.py` | Planned | architecture.md §7 |
 | FR-050 | `infra/mcp_server.py`, `infra/mcp_client.py` | `tests/network/` | Planned | protocol.md §1 |
 | FR-051 | `infra/mcp_server.py` | `tests/network/`, `tests/protocol/` | Planned | " |
-| FR-052 | `domain/state_machine.py`, `orchestrator.py` | `tests/unit/test_state_machine.py` | Planned | architecture.md §5 |
+| FR-052 | `domain/state_machine.py`; wired into `orchestrator.py` (Part 9) | `tests/unit/test_state_machine.py` | Tested (state machine) / Planned (orchestrator wiring) | architecture.md §5 |
 | FR-053 | `orchestrator.py` (Deadline Tracker) | `tests/network/test_timeout.py` | Planned | architecture.md §7 |
 | FR-054 | `infra/watchdog.py` | `tests/integration/test_orchestrator.py` | Planned | " |
 | FR-055 | `infra/gatekeeper.py` | `tests/unit/test_gatekeeper.py` | Planned | architecture.md §7 |

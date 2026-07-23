@@ -94,3 +94,21 @@ clean; `mypy src` clean (11 source files).
 **Remaining issues**: none blocking.
 
 **Next part**: Part 6 — game state machine (`domain/state_machine.py`).
+
+## 2026-07-24 — Part 6: Game state machine
+
+**Files changed**: `src/police_thief/domain/state_machine.py` (`GamePhaseMachine`, exact transition
+table from docs/protocol.md §4), `tests/unit/test_state_machine.py`.
+
+**Requirements completed**: FR-052 (state-machine core; orchestrator wiring still pending Part 9).
+
+**Tests executed**: `uv run pytest tests/unit -q` (45 tests total now, all passing); `ruff format`/
+`ruff check` clean; `mypy src` clean (12 source files).
+
+**Test results**: 45/45 passed (11 new for the state machine: happy-path cycle, TECHNICAL_LOSS
+reachable from 3 states, TECHNICAL_LOSS terminal against every possible target, 5 parametrized
+illegal-transition-rejected-and-state-unchanged cases).
+
+**Remaining issues**: none blocking.
+
+**Next part**: Part 5 — scent/pheromone belief-map engine (`domain/scent.py`).
