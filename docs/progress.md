@@ -75,3 +75,22 @@ them to build on.
 **Next part**: Part 3 (config file loader) folded into upcoming parts as needed; proceeding to
 Part 4 — Commit-Reveal cryptographic module — next, since it has no dependency on the config-file
 I/O layer beyond the already-complete `GameConfig` shape.
+
+## 2026-07-24 — Part 4: Commit-Reveal cryptographic module
+
+**Files changed**: `src/police_thief/domain/crypto.py` (`commit`/`verify`/`generate_nonce`/
+`hash_state`, canonical-JSON payload), `tests/unit/test_crypto.py`.
+
+**Requirements completed**: FR-040, FR-041 fully (Tested); FR-042/FR-043 crypto primitives done,
+end-to-end message-sequencing and DQ-wiring deferred to the Orchestrator (Part 9).
+
+**Tests executed**: `uv run pytest tests/unit/test_crypto.py -v` (9 tests: round-trip, tamper
+detection on each of state/move/intent/nonce independently, nonce freshness + 1000-sample
+uniqueness smoke test, canonical-JSON byte-identical construction); `ruff format`/`ruff check`
+clean; `mypy src` clean (11 source files).
+
+**Test results**: 9/9 passed.
+
+**Remaining issues**: none blocking.
+
+**Next part**: Part 6 — game state machine (`domain/state_machine.py`).

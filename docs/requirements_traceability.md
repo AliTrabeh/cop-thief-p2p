@@ -29,10 +29,10 @@ and every entry in `docs/progress.md`.
 | FR-031 | `config.py` | `tests/unit/test_config.py` | Planned | " |
 | FR-032 | `domain/scent.py`, `strategy/heuristic.py` | `tests/unit/test_scent.py`, `test_strategy.py` | Planned | " |
 | FR-033 | `strategy/qlearning.py` (optional) | — | Planned (bonus) | " |
-| FR-040 | `domain/crypto.py` | `tests/unit/test_crypto.py` | Planned | protocol.md §3 |
-| FR-041 | `domain/crypto.py` | `tests/unit/test_crypto.py` | Planned | " |
-| FR-042 | `orchestrator.py`, `domain/crypto.py` | `tests/protocol/` | Planned | protocol.md §3 |
-| FR-043 | `domain/crypto.py`, `orchestrator.py` | `tests/unit/test_crypto.py` | Planned | " |
+| FR-040 | `domain/crypto.py` | `tests/unit/test_crypto.py` | Tested | protocol.md §3 |
+| FR-041 | `domain/crypto.py` | `tests/unit/test_crypto.py` | Tested | " |
+| FR-042 | `orchestrator.py` (Part 9), `domain/crypto.py` | `tests/protocol/` (Part 8/9) | Implemented (crypto primitives) / Planned (message sequencing) | protocol.md §3 |
+| FR-043 | `domain/crypto.py`; DQ wiring in `orchestrator.py` | `tests/unit/test_crypto.py` | Tested (crypto) / Planned (end-to-end) | " |
 | FR-044 | `orchestrator.py` | `tests/integration/test_orchestrator.py` | Planned | " |
 | FR-045 | `gui/replay_viewer.py` | `tests/unit/test_replay_viewer.py` | Planned | architecture.md §7 |
 | FR-050 | `infra/mcp_server.py`, `infra/mcp_client.py` | `tests/network/` | Planned | protocol.md §1 |
