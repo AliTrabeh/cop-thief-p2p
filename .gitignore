@@ -1,0 +1,37 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- Tooling caches ---
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- IDE ---
+.idea/
+.vscode/
+
+# --- Secrets: never commit credentials or the signed game "constitution" ---
+credentials.json
+token.json
+.env
+*.env
+config/**/secrets.json
+
+# --- Copyrighted course material: do not redistribute the lecturer's PDF ---
+police_thief_p2p.pdf
+
+# --- Logs / runtime artifacts ---
+logs/
+*.log
