@@ -162,3 +162,31 @@ clean (15 source files).
 (the config-driven half of FR-060) is deferred to the config-loader work alongside FastMCP infra.
 
 **Next part**: Part 8 — FastMCP P2P transport + message protocol.
+
+## 2026-07-24 — Part 3 (deferred config loader) + strategy class loader
+
+**Files changed**: `src/police_thief/config.py` (`load_game_config`, `shared_config_hash`,
+`load_peer_config`, `PeerConfig` model tree mirroring `config/<role>/game.toml`),
+`src/police_thief/strategy/base.py` (`load_brain_class` — resolves `package.module:Class` config
+strings into `BrainBase` subclasses), `tests/unit/test_config.py`, additions to
+`tests/unit/test_strategy.py`.
+
+**Requirements completed**: NFR-005 (Tested — config-driven, no hardcoded constants), NFR-008
+(Tested — shared-config hash is whitespace-invariant but change-sensitive), FR-060's pluggable
+loading half (Tested).
+
+**Tests executed**: `uv run pytest tests/unit -q` (77 tests total); new config tests cover
+round-tripping the book's own JSON/TOML examples, missing-file/invalid-JSON/invalid-TOML/schema-
+violation error paths (all raising `ConfigError` with a clear message, never a bare
+`KeyError`/`FileNotFoundError`), and hash equality/inequality under whitespace vs. real changes;
+new strategy-loader tests cover valid spec resolution and three distinct rejection paths
+(malformed spec, non-`BrainBase` class, unknown attribute). `ruff format`/`ruff check` clean;
+`mypy src` clean (16 source files).
+
+**Test results**: 77/77 passed.
+
+**Remaining issues**: none blocking. `config.py` doesn't yet enforce NFR-008's *cross-peer*
+byteidentical check (that requires two peers to exchange hashes over FastMCP, Part 8/9) — today it
+only proves the hash function itself is well-behaved.
+
+**Next part**: Part 8 — FastMCP P2P transport + message protocol.

@@ -9,6 +9,7 @@ does to the GUI).
 
 from __future__ import annotations
 
+import importlib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -97,3 +98,24 @@ class ThiefBrain(BrainBase):
 
 class PoliceBrain(BrainBase):
     """Marker base class for police strategies."""
+
+
+def load_brain_class(spec: str) -> type[BrainBase]:
+    """Resolve a ``package.module:Class`` string from ``[strategy]`` config
+    (Appendix F Table 22) into a :class:`BrainBase` subclass.
+
+    Raises :class:`ValueError` for a malformed spec and :class:`TypeError` if
+    the resolved object isn't a ``BrainBase`` subclass — never silently
+    falls back to the default heuristic on a typo.
+    """
+    module_name, sep, class_name = spec.partition(":")
+    if not sep or not module_name or not class_name:
+        raise ValueError(f"strategy class spec must be 'package.module:Class', got {spec!r}")
+    module = importlib.import_module(module_name)
+    try:
+        cls = getattr(module, class_name)
+    except AttributeError as exc:
+        raise ValueError(f"{module_name!r} has no attribute {class_name!r}") from exc
+    if not (isinstance(cls, type) and issubclass(cls, BrainBase)):
+        raise TypeError(f"{spec} does not subclass BrainBase")
+    return cls

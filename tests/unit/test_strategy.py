@@ -4,10 +4,17 @@ from __future__ import annotations
 
 import itertools
 
+import pytest
+
 from police_thief.domain.board import BoardState
 from police_thief.domain.models import Coordinate, Role
 from police_thief.domain.scent import ScentField
-from police_thief.strategy.base import BarrierAction, MoveAction, build_belief_view
+from police_thief.strategy.base import (
+    BarrierAction,
+    MoveAction,
+    build_belief_view,
+    load_brain_class,
+)
 from police_thief.strategy.heuristic import HeuristicPoliceBrain, HeuristicThiefBrain
 
 
@@ -110,3 +117,23 @@ def test_all_legal_move_directions_are_reachable_as_tiebreak_winners(game_config
         view = build_belief_view(board, scent, Role.POLICE)
         action = HeuristicPoliceBrain().decide(view)
         assert isinstance(action, MoveAction | BarrierAction)
+
+
+def test_load_brain_class_resolves_a_valid_spec():
+    cls = load_brain_class("police_thief.strategy.heuristic:HeuristicPoliceBrain")
+    assert cls is HeuristicPoliceBrain
+
+
+def test_load_brain_class_rejects_malformed_spec():
+    with pytest.raises(ValueError, match="package.module:Class"):
+        load_brain_class("not-a-valid-spec")
+
+
+def test_load_brain_class_rejects_non_brainbase_class():
+    with pytest.raises(TypeError, match="does not subclass BrainBase"):
+        load_brain_class("pathlib:Path")
+
+
+def test_load_brain_class_rejects_unknown_attribute():
+    with pytest.raises(ValueError, match="no attribute"):
+        load_brain_class("police_thief.strategy.heuristic:NoSuchBrain")

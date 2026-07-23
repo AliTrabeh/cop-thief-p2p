@@ -62,10 +62,10 @@ and every entry in `docs/progress.md`.
 | NFR-002 | `pathlib` usage throughout | manual review + CI on Windows | Planned | — |
 | NFR-003 | `orchestrator.py` shutdown path | `tests/network/test_shutdown.py` | Planned | architecture.md §6 |
 | NFR-004 | `logging_setup.py` | `tests/unit/test_logging_redaction.py` | Planned | testing_strategy.md §1 |
-| NFR-005 | `config.py` | `tests/unit/test_config.py` | Planned | protocol.md §5/§6 |
+| NFR-005 | `config.py` (`load_game_config`/`load_peer_config`) | `tests/unit/test_config.py` | Tested | protocol.md §5/§6 |
 | NFR-006 | `infra/gatekeeper.py`, `infra/mcp_server.py` | `tests/unit/test_gatekeeper.py` | Planned | architecture.md §7 |
 | NFR-007 | Step-0 declaration JSON emitter | manual + schema test | Planned | assumptions.md A-007 |
-| NFR-008 | `config.py` (hash check) | `tests/unit/test_config.py` | Planned | protocol.md §5 |
+| NFR-008 | `config.py::shared_config_hash` | `tests/unit/test_config.py` | Tested | protocol.md §5 |
 | PROTO-001..004 | `config.py`, `domain/crypto.py`, `infra/mcp_server.py` | `tests/protocol/` | Planned | protocol.md |
 | TEST-001..007 | see testing_strategy.md | themselves | Planned | testing_strategy.md |
 | DOC-001..005 | `README.md`, `docs/*` | manual review | Planned | this repo |
