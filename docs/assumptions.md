@@ -146,6 +146,19 @@ from the peak at the center to 0 at the field's outer radius. This reproduces th
 project's own formula is internally consistent (peak at center, monotonic falloff, zero outside the
 field), not that it reproduces Figure 4 exactly.
 
+### A-016 — Which role gets the `_decide_move` barrier-choice hook
+
+§6.2's prose (as read directly from the book, printed page 42) attributes the extra `_decide_move`
+override specifically to the cop ("ואצל השוטר גם את בחירת המחסום גם ב-_decide_move" — "and for the
+policeman, also the barrier choice, via `_decide_move`"), i.e. on top of the `_pick_move` every
+brain must implement. A separately-sourced extraction of Appendix F Table 22 paraphrased this as
+"override `_pick_move` and/or `_decide_move`" for *both* `thief_class` and `police_class` — looser
+wording that doesn't contradict the more specific §6.2 sentence, just doesn't repeat its detail.
+**Decision**: `BrainBase._decide_move` is defined on the shared base class (so a thief brain
+*could* override it too, if a future strategy wants an equivalent hook), but only
+`strategy.heuristic.HeuristicPoliceBrain` actually overrides it, exactly matching §6.2's more
+specific statement — the barrier-vs-move decision is cop-only in this project's default strategy.
+
 ### A-012 — Single-contributor project
 
 The working instructions describe a team ("every team member", "credit to all members"). This

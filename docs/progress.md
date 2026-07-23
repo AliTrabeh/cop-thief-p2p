@@ -134,3 +134,31 @@ the scent source. `ruff format`/`ruff check` clean; `mypy src` clean (13 source 
 **Remaining issues**: none blocking.
 
 **Next part**: Part 7 — strategy modules (`strategy/base.py`, `strategy/heuristic.py`).
+
+## 2026-07-24 — Part 7: Strategy modules
+
+**Files changed**: `src/police_thief/strategy/base.py` (`BrainBase`/`ThiefBrain`/`PoliceBrain`,
+`BeliefView`, `build_belief_view`, `MoveAction`/`BarrierAction`), `src/police_thief/strategy/
+heuristic.py` (default Manhattan+belief-argmax brains for both roles, cop-only barrier-cornering
+`_decide_move` override), `tests/unit/test_strategy.py`. New assumption A-016 documenting the
+`_decide_move` cop-vs-both-roles ambiguity and the decision to make it cop-only in the default
+strategy (while leaving the hook available to any brain).
+
+**Requirements completed**: FR-060 (Tested — pluggable brain interface + default heuristic),
+FR-064 (Implemented via `WorldConfig.hint_max_words`, already validated). FR-061/062/063 (LLM
+bluff-only text channel) deferred to a later part alongside FastMCP infra, since they need the
+`[trash_talk]`/`[llm]` config sections wired to a real provider.
+
+**Tests executed**: `uv run pytest tests/unit -q` (63 tests total); new strategy tests cover:
+legal-action guarantee for both brains, thief evasion / cop pursuit direction correctness, cop
+barrier-cornering when the believed thief cell is adjacent, determinism given a fixed view, and
+that a thief brain fed a decoy scent trail cannot distinguish it from the real cop (the local-truth
+boundary holds for strategies, not just the GUI). `ruff format`/`ruff check` clean; `mypy src`
+clean (15 source files).
+
+**Test results**: 63/63 passed.
+
+**Remaining issues**: none blocking. Pluggable-class loading from a `package.module:Class` string
+(the config-driven half of FR-060) is deferred to the config-loader work alongside FastMCP infra.
+
+**Next part**: Part 8 — FastMCP P2P transport + message protocol.

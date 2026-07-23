@@ -41,11 +41,11 @@ and every entry in `docs/progress.md`.
 | FR-053 | `orchestrator.py` (Deadline Tracker) | `tests/network/test_timeout.py` | Planned | architecture.md §7 |
 | FR-054 | `infra/watchdog.py` | `tests/integration/test_orchestrator.py` | Planned | " |
 | FR-055 | `infra/gatekeeper.py` | `tests/unit/test_gatekeeper.py` | Planned | architecture.md §7 |
-| FR-060 | `strategy/base.py` | `tests/unit/test_strategy.py` | Planned | protocol.md §6 |
-| FR-061 | `strategy/llm_bluff.py` | `tests/unit/test_strategy.py` | Planned | assumptions.md A-005 |
-| FR-062 | `strategy/llm_bluff.py` | `tests/unit/test_strategy.py` | Planned | " |
-| FR-063 | `strategy/llm_bluff.py` | `tests/unit/test_strategy.py` | Planned | " |
-| FR-064 | `config.py` | `tests/unit/test_config.py` | Planned | " |
+| FR-060 | `strategy/base.py` (BrainBase/ThiefBrain/PoliceBrain, build_belief_view), `strategy/heuristic.py` (default brains) | `tests/unit/test_strategy.py` | Tested | protocol.md §6, assumptions.md A-016 |
+| FR-061 | `strategy/llm_bluff.py` (Part 8) | `tests/unit/test_strategy.py` | Planned | assumptions.md A-005 |
+| FR-062 | `strategy/llm_bluff.py` (Part 8) | — | Planned | " |
+| FR-063 | `strategy/llm_bluff.py` (Part 8) | — | Planned | " |
+| FR-064 | `domain/models.py::WorldConfig.hint_max_words` | `tests/unit/test_board.py` (config validation) | Implemented | " |
 | FR-070 | `gui/live_view.py` | `tests/unit/test_live_view_render.py` | Planned | architecture.md §1 |
 | FR-071 | `gui/replay_viewer.py` | `tests/unit/test_replay_viewer.py` | Planned | " |
 | FR-072 | `gui/live_view.py`, `gui/replay_viewer.py` | manual screenshot | Planned | docs/final_audit.md (future) |
