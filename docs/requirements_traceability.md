@@ -14,17 +14,17 @@ and every entry in `docs/progress.md`.
 | FR-004 | `orchestrator.py` (Deadline Tracker) | `tests/network/test_timeout.py` | Planned | architecture.md §7 |
 | FR-005 | `infra/watchdog.py` | `tests/integration/test_orchestrator.py` | Planned | architecture.md §7 |
 | FR-006 | `gui/live_view.py` | `tests/unit/test_live_view_render.py` | Planned | architecture.md §1/§4 |
-| FR-010 | `domain/board.py`, `config.py` | `tests/unit/test_board.py` | Planned | requirements_analysis.md §2 |
-| FR-011 | `domain/board.py` | `tests/unit/test_board.py` | Planned | " |
-| FR-012 | `domain/board.py` | `tests/unit/test_board.py` | Planned | " |
-| FR-013 | `domain/board.py`, `config.py` | `tests/unit/test_board.py` | Planned | assumptions.md A-003 |
-| FR-014 | `domain/board.py` | `tests/unit/test_board.py` | Planned | assumptions.md A-010 |
-| FR-015 | `domain/board.py` | `tests/unit/test_board.py` | Planned | " |
+| FR-010 | `domain/board.py`, `domain/models.py` | `tests/unit/test_board.py` | Tested | requirements_analysis.md §2 |
+| FR-011 | `domain/models.py` | `tests/unit/test_board.py` | Tested | " |
+| FR-012 | `domain/models.py` | `tests/unit/test_board.py` | Tested | " |
+| FR-013 | `domain/models.py` | `tests/unit/test_board.py` | Tested | assumptions.md A-003 |
+| FR-014 | `domain/board.py` | `tests/unit/test_board.py` | Tested | assumptions.md A-010 |
+| FR-015 | `domain/board.py` | `tests/unit/test_board.py` | Tested | " |
 | FR-016 | `domain/board.py`, log manager | `tests/integration/test_orchestrator.py` | Planned | architecture.md §6 |
-| FR-017 | `domain/board.py` | `tests/unit/test_board.py` | Planned | " |
-| FR-018 | `domain/board.py` | `tests/unit/test_board.py` | Planned | requirements_analysis.md §2 |
-| FR-020 | `domain/board.py`, `config.py` | `tests/unit/test_board.py` | Planned | assumptions.md A-001 |
-| FR-021 | `orchestrator.py` | `tests/integration/test_orchestrator.py` | Planned | " |
+| FR-017 | `domain/board.py` | `tests/unit/test_board.py` | Tested | " |
+| FR-018 | `domain/board.py` | `tests/unit/test_board.py` | Tested | requirements_analysis.md §2, assumptions.md A-013 |
+| FR-020 | `domain/scoring.py`, `domain/models.py` | `tests/unit/test_scoring.py` | Tested | assumptions.md A-001 |
+| FR-021 | `domain/scoring.py`; full wiring in `orchestrator.py` (Part 9) | `tests/unit/test_scoring.py` | Tested (scoring fn) / Planned (end-to-end) | assumptions.md A-014 |
 | FR-030 | `domain/scent.py` | `tests/unit/test_scent.py` | Planned | requirements_analysis.md §4 |
 | FR-031 | `config.py` | `tests/unit/test_config.py` | Planned | " |
 | FR-032 | `domain/scent.py`, `strategy/heuristic.py` | `tests/unit/test_scent.py`, `test_strategy.py` | Planned | " |
@@ -58,7 +58,7 @@ and every entry in `docs/progress.md`.
 | FR-086 | repo/tag process | manual | Planned | implementation_plan.md Part 18 |
 | FR-087 | `infra/gmail_report.py` (declaration) | `tests/unit/test_gmail_report.py` | Planned | " |
 | FR-088 | `config/<role>/game.toml` | manual review | Planned | assumptions.md A-012 |
-| NFR-001 | package boundaries (`domain/` has no I/O imports) | lint rule + `tests/unit/*` | Planned | architecture.md §1 |
+| NFR-001 | package boundaries (`domain/` has no I/O imports) | manual review (no lint rule yet) + `tests/unit/*` all run without sockets/GUI | Implemented | architecture.md §1 |
 | NFR-002 | `pathlib` usage throughout | manual review + CI on Windows | Planned | — |
 | NFR-003 | `orchestrator.py` shutdown path | `tests/network/test_shutdown.py` | Planned | architecture.md §6 |
 | NFR-004 | `logging_setup.py` | `tests/unit/test_logging_redaction.py` | Planned | testing_strategy.md §1 |

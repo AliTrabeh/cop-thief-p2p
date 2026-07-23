@@ -89,7 +89,7 @@
 uv sync
 uv run ruff format --check .
 uv run ruff check .
-uv run mypy .
+uv run mypy src
 uv run pytest -v
 uv run pytest --cov=src --cov-report=term-missing
 uv run pytest tests/e2e -v          # slower, spawns real subprocesses

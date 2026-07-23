@@ -13,7 +13,7 @@ criteria, risks, and dependencies.
   PyCharm placeholder, replaced by `src/` package + CLI entry point).
 - **Requirements**: NFR-002, NFR-005 (config plumbing groundwork).
 - **Tests**: `uv run pytest --collect-only` succeeds (no tests yet, but collection doesn't error).
-- **Commands**: `uv sync`, `uv run ruff check .`, `uv run mypy .`.
+- **Commands**: `uv sync`, `uv run ruff check .`, `uv run mypy src`.
 - **Acceptance**: `uv run python -m police_thief --help` prints usage (even if a stub).
 - **Risks**: none significant. **Depends on**: nothing.
 

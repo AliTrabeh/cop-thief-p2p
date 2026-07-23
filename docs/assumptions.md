@@ -110,6 +110,27 @@ cites section/appendix numbers in `docs/requirements_analysis.md` and this file.
 requires the PDF itself to be attached, it can be added to a private submission channel outside
 Git, or the user can confirm redistribution is permitted and this decision can be reversed.
 
+### A-013 — "Thief who never moved per the rules is also considered captured" (Appendix E item 47)
+
+The book states this in one sentence with no further mechanics. The only unambiguous reading given
+the rest of §3.4 is: if the configured `move_set` does not include `STAY` and the thief has no
+legal orthogonal move available (fully boxed in by barriers/board edge without being on the same
+cell as the cop or a barrier), the thief cannot make *any* legal move and is treated as captured.
+Under the default `move_set` (which includes `STAY`), this situation cannot arise, since `STAY` is
+always legal — E-47 only bites for a non-default, `STAY`-excluding move set.
+**Decision**: `BoardState.apply_move` sets `Outcome.THIEF_STRANDED` (scored identically to
+`Outcome.CAPTURE`) when it is the thief's turn and `legal_moves(Role.THIEF)` is empty.
+
+### A-014 — Opponent's score on a technical disqualification
+
+FR-021/FR-043 establish that a disqualified side scores `technical_loss` (0), but the book never
+states what the *other*, non-offending side scores in that case. Awarding both sides 0 would be
+indistinguishable from a mutual double-disqualification and gives the honest side no credit.
+**Decision**: the non-disqualified side is credited its `survival_*` score (see
+`domain/scoring.py::technical_loss_score`) — a conservative choice consistent with the book's
+general "the honest side should never be worse off than the cheater" spirit (§5.3.2 "the deception
+temptation" framing), without inventing a new, higher score class not present in Appendix F Table 17.
+
 ### A-012 — Single-contributor project
 
 The working instructions describe a team ("every team member", "credit to all members"). This

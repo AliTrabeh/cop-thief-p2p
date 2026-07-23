@@ -27,3 +27,51 @@ spec and documented with source citations.
 
 **Next part**: Part 1 — repository & dev-tool setup (`uv`-managed `pyproject.toml`, `src/` layout,
 ruff/mypy/pytest wiring, package skeleton).
+
+## 2026-07-23 — Part 1: Repository and dev-tool setup
+
+**Files changed**: `pyproject.toml` (uv-managed, fastmcp/pydantic/Gmail deps, ruff/mypy/pytest
+config), `uv.lock`, `src/police_thief/{__init__,__main__,cli}.py`,
+`src/police_thief/{domain,strategy,infra,gui}/__init__.py`; removed `main.py`.
+
+**Requirements completed**: scaffolding only (no FR/NFR yet — groundwork for NFR-002/NFR-005).
+
+**Tests executed**: `uv run python -m police_thief --help` / `peer --help` (manual, both correct);
+`uv run ruff format .` (2 files reformatted, clean after); `uv run ruff check .` (all checks
+passed); `uv run mypy .` (no issues, 7 source files); `uv run pytest --collect-only` (0 tests
+collected — expected, exit 5, no test files exist yet).
+
+**Test results**: all green / as expected for a scaffold-only part.
+
+**Remaining issues**: none blocking.
+
+**Next part**: Part 2 — core domain models + board/game rules.
+
+## 2026-07-24 — Part 2: Core domain models + board/game rules
+
+**Files changed**: `src/police_thief/domain/models.py` (Coordinate, Role, Direction, full
+`GameConfig` pydantic model tree mirroring `config/game.json`), `src/police_thief/domain/board.py`
+(`BoardState`, movement/barrier legality, capture/win/stranded detection),
+`src/police_thief/domain/scoring.py` (score/technical_loss_score), `tests/unit/conftest.py`,
+`tests/unit/test_board.py`, `tests/unit/test_scoring.py`. Two new documented assumptions added:
+A-013 (thief-stranded interpretation) and A-014 (technical-loss opponent scoring).
+
+**Requirements completed**: FR-010..021 (board/movement/barriers/capture/scoring), NFR-005 (no
+hardcoded constants — everything flows from `GameConfig`), NFR-001 (domain package has zero I/O
+imports), A-003/A-009/A-010/A-013/A-014 resolved in code.
+
+**Tests executed**: `uv run pytest tests/unit -v` (25 tests: board legality/bounds/barriers/
+capture/survival/thief-stranded/config-validation, scoring for capture/survival/technical-loss);
+`uv run ruff format .` + `uv run ruff check .` (clean); `uv run mypy src` (no issues, 10 source
+files — mypy is now scoped to `src/`, not `tests/`, since strict untyped-def checking on test
+functions isn't a useful signal; see docs/testing_strategy.md).
+
+**Test results**: 25/25 passed.
+
+**Remaining issues**: none blocking. `domain/scent.py` (Part 5), `domain/crypto.py` (Part 4), and
+`domain/state_machine.py` (Part 6) are still unimplemented — `GameConfig`/`BoardState` are ready for
+them to build on.
+
+**Next part**: Part 3 (config file loader) folded into upcoming parts as needed; proceeding to
+Part 4 — Commit-Reveal cryptographic module — next, since it has no dependency on the config-file
+I/O layer beyond the already-complete `GameConfig` shape.
