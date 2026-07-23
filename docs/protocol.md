@@ -53,8 +53,11 @@ H_commit = SHA256( State ‖ Move ‖ Intent ‖ Nonce )
 
 ```python
 def verify(state, move, intent, nonce, h_commit) -> bool:
-    payload = json.dumps({"state": state, "move": move, "intent": intent, "nonce": nonce},
-                          sort_keys=True, separators=(",", ":"))
+    payload = json.dumps(
+        {"state": state, "move": move, "intent": intent, "nonce": nonce},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     recomputed = hashlib.sha256(payload.encode("utf-8")).hexdigest()
     return secrets.compare_digest(recomputed, h_commit)
 ```
