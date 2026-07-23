@@ -163,6 +163,35 @@ clean (15 source files).
 
 **Next part**: Part 8 — FastMCP P2P transport + message protocol.
 
+## 2026-07-24 — Part 8: FastMCP P2P transport + message protocol
+
+**Files changed**: `src/police_thief/infra/protocol.py` (`MessageType`, `RejectReason`,
+`ProtocolMessage`, `ProtocolResponse`), `src/police_thief/infra/mcp_server.py` (`build_server`,
+`SequenceTracker` for duplicate/stale detection, oversized-payload guard), `src/police_thief/infra/
+mcp_client.py` (`MCPPeerClient` with timeout + bounded retry — the Deadline Tracker), `tests/
+network/test_mcp_transport.py`.
+
+**Requirements completed**: FR-050 (Tested), FR-051 schema/sequencing half (Implemented; signature
+verification wiring is Part 9, once real commit/reveal data flows through), NFR-006 (Tested —
+oversized payloads rejected before reaching any handler), PROTO-001..004 (Tested).
+
+**Tests executed**: `uv run pytest tests/network tests/unit -q` (93 tests total). Networking tests
+use FastMCP's real client/server stack over its in-process transport (a genuine MCP protocol round
+trip — real serialization, tool dispatch, and error propagation — without needing an open socket in
+CI); cover: successful round trip, handler rejection returned (not raised) to the caller, duplicate
+turn rejected idempotently, stale turn rejected, malformed payload doesn't crash the server,
+oversized payload rejected, and an unreachable peer raises `PeerUnreachableError` after retries
+exhaust. `ruff format`/`ruff check` clean; `mypy src` clean (20 source files).
+
+**Test results**: 93/93 passed.
+
+**Remaining issues**: signature/commit verification isn't wired into `mcp_server.py`'s handler yet
+— that's the Orchestrator's job (Part 9), since the networking layer must not contain game rules
+(architecture.md §3). A true two-OS-process HTTP round trip (vs. today's in-process transport) is
+exercised in the Part 16 end-to-end demo, not unit/network tests.
+
+**Next part**: Part 9 — Orchestrator, reliability patterns (Watchdog/Deadline Tracker wiring).
+
 ## 2026-07-24 — Part 10 (Gatekeeper) done early, out of order
 
 **Files changed**: `src/police_thief/infra/gatekeeper.py` (`TokenBucket`, `QuotaManager`,
