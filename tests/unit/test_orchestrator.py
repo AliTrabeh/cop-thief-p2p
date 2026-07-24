@@ -1,30 +1,17 @@
-"""Unit tests for orchestrator.py — FR-052/053, TEST-004."""
+"""Unit tests for orchestrator.py — FR-052/053, TEST-004 (own-turn flow half;
+incoming-message tests live in the sibling file test_orchestrator_messages.py,
+split out to keep each file under 150 lines).
+"""
 
 from __future__ import annotations
 
+from _orchestrator_helpers import CrashingBrain, make_orchestrator
+
 from police_thief.domain.board import BoardState
-from police_thief.domain.models import Coordinate, Role
+from police_thief.domain.models import Role
 from police_thief.domain.state_machine import GamePhase
-from police_thief.infra.protocol import MessageType, ProtocolMessage, ProtocolResponse, RejectReason
+from police_thief.infra.protocol import MessageType, ProtocolResponse, RejectReason
 from police_thief.orchestrator import Orchestrator, TechnicalLossError
-from police_thief.strategy.base import BeliefView, BrainBase
-from police_thief.strategy.heuristic import HeuristicPoliceBrain, HeuristicThiefBrain
-
-
-class _CrashingBrain(BrainBase):
-    """A pluggable strategy (FR-060) that's simply buggy -- must never take
-    down the whole peer process (PRD-0286/PRD-0573)."""
-
-    def _pick_move(self, view: BeliefView):  # noqa: ANN001, ANN201 - test double
-        raise RuntimeError("boom")
-
-
-def make_orchestrator(game_config, role: Role) -> Orchestrator:
-    board = BoardState.initial(game_config)
-    brain = HeuristicPoliceBrain() if role is Role.POLICE else HeuristicThiefBrain()
-    return Orchestrator(
-        role=role, game_id="test-game", config=game_config, board=board, brain=brain
-    )
 
 
 def test_produce_commit_transitions_and_locks_an_action(game_config):
@@ -79,7 +66,7 @@ def test_produce_commit_with_crashing_brain_becomes_own_technical_loss(game_conf
         game_id="test-game",
         config=game_config,
         board=board,
-        brain=_CrashingBrain(),
+        brain=CrashingBrain(),
     )
     try:
         orch.produce_commit()
@@ -91,76 +78,6 @@ def test_produce_commit_with_crashing_brain_becomes_own_technical_loss(game_conf
     assert orch.phase.state is GamePhase.TECHNICAL_LOSS
     assert orch.technical_loss_role is Role.POLICE
     assert "RuntimeError" in (orch.technical_loss_reason or "")
-
-
-def test_receive_commit_does_not_mutate_the_board(game_config):
-    orch = make_orchestrator(game_config, Role.POLICE)
-    before = (orch.board.cop_position, orch.board.thief_position)
-    response = orch.handle_message(
-        ProtocolMessage(
-            message_type=MessageType.COMMIT,
-            game_id="test-game",
-            turn_number=0,
-            sender_role=Role.THIEF,
-            payload={"h_commit": "deadbeef"},
-        )
-    )
-    assert response.accepted
-    assert (orch.board.cop_position, orch.board.thief_position) == before
-    assert orch._pending_opponent_commit == "deadbeef"
-
-
-def test_receive_reveal_applies_opponent_move_and_updates_belief(game_config):
-    orch = make_orchestrator(game_config, Role.POLICE)  # our role is police
-    response = orch.handle_message(
-        ProtocolMessage(
-            message_type=MessageType.REVEAL,
-            game_id="test-game",
-            turn_number=0,
-            sender_role=Role.THIEF,
-            payload={"move": "MOVE:N"},
-        )
-    )
-    assert response.accepted
-    assert orch.board.thief_position == Coordinate(row=2, col=3)  # started at (3,3), moved N
-    assert len(orch.opponent_log) == 1
-    assert orch.opponent_scent.intensity_at(Coordinate(row=2, col=3)) > 0
-
-
-def test_receive_reveal_with_illegal_move_causes_technical_loss(game_config):
-    orch = make_orchestrator(game_config, Role.POLICE)
-    # Thief starts at (3,3); moving WEST repeatedly off the board is illegal
-    # once out of bounds is attempted directly via a crafted out-of-range move.
-    orch.board.thief_position = Coordinate(row=0, col=0)
-    response = orch.handle_message(
-        ProtocolMessage(
-            message_type=MessageType.REVEAL,
-            game_id="test-game",
-            turn_number=0,
-            sender_role=Role.THIEF,
-            payload={"move": "MOVE:N"},  # off the top edge from row 0
-        )
-    )
-    assert not response.accepted
-    assert response.reason is RejectReason.ILLEGAL_MOVE
-    assert orch.is_over
-    assert orch.technical_loss_role is Role.THIEF  # the opponent, not us, is disqualified
-
-
-def test_receive_reveal_malformed_move_is_rejected(game_config):
-    orch = make_orchestrator(game_config, Role.POLICE)
-    response = orch.handle_message(
-        ProtocolMessage(
-            message_type=MessageType.REVEAL,
-            game_id="test-game",
-            turn_number=0,
-            sender_role=Role.THIEF,
-            payload={"move": "NOT-A-VALID-ACTION"},
-        )
-    )
-    assert not response.accepted
-    assert response.reason is RejectReason.MALFORMED
-    assert not orch.is_over  # a malformed message doesn't itself disqualify anyone
 
 
 def test_repeated_full_turn_cycle_advances_turn_number(game_config):
