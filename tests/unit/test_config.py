@@ -118,6 +118,23 @@ def test_load_game_config_schema_violation_raises_config_error(tmp_path: Path):
         load_game_config(path)
 
 
+def test_load_game_config_rejects_unknown_top_level_field(tmp_path: Path):
+    bad = {**VALID_GAME_JSON, "totally_made_up_field": 1}
+    path = tmp_path / "game.json"
+    path.write_text(json.dumps(bad), encoding="utf-8")
+    with pytest.raises(ConfigError, match="failed validation"):
+        load_game_config(path)
+
+
+def test_load_game_config_rejects_unknown_nested_field(tmp_path: Path):
+    bad = json.loads(json.dumps(VALID_GAME_JSON))
+    bad["scoring"]["captur_cop"] = 20  # a plausible typo of "capture_cop"
+    path = tmp_path / "game.json"
+    path.write_text(json.dumps(bad), encoding="utf-8")
+    with pytest.raises(ConfigError, match="failed validation"):
+        load_game_config(path)
+
+
 def test_shared_config_hash_is_identical_for_byte_identical_files(tmp_path: Path):
     path_a = tmp_path / "a" / "game.json"
     path_b = tmp_path / "b" / "game.json"
@@ -167,5 +184,20 @@ def test_load_peer_config_missing_required_field_raises_config_error(tmp_path: P
     path.write_text(
         'version = "1.0"\n[network]\nmy_port = 1\nopponent_url = "x"\n', encoding="utf-8"
     )
+    with pytest.raises(ConfigError, match="failed validation"):
+        load_peer_config(path)
+
+
+def test_load_peer_config_rejects_unknown_field(tmp_path: Path):
+    path = tmp_path / "game.toml"
+    path.write_text(VALID_PEER_TOML + "\nnot_a_real_field = 1\n", encoding="utf-8")
+    with pytest.raises(ConfigError, match="failed validation"):
+        load_peer_config(path)
+
+
+def test_load_peer_config_rejects_unknown_nested_field(tmp_path: Path):
+    tampered = VALID_PEER_TOML.replace("my_port = 8802", "my_port = 8802\nmyport_typo = 1")
+    path = tmp_path / "game.toml"
+    path.write_text(tampered, encoding="utf-8")
     with pytest.raises(ConfigError, match="failed validation"):
         load_peer_config(path)

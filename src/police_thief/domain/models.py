@@ -34,6 +34,15 @@ class Direction(StrEnum):
     STAY = "STAY"
 
 
+class _StrictConfigModel(BaseModel):
+    """Base for every ``config/game.json``-shaped model: an unrecognized
+    field (typo'd key, stale/renamed parameter) fails loudly at load time
+    instead of being silently ignored (PRD-0570).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+
 _DELTAS: dict[Direction, tuple[int, int]] = {
     Direction.NORTH: (-1, 0),
     Direction.SOUTH: (1, 0),
@@ -61,7 +70,7 @@ class Coordinate(BaseModel):
         return abs(self.row - other.row) + abs(self.col - other.col)
 
 
-class BoardAndAgentsConfig(BaseModel):
+class BoardAndAgentsConfig(_StrictConfigModel):
     grid_size: int = Field(ge=7)
     num_agents: int = Field(default=2)
     thief_start: tuple[int, int]
@@ -87,12 +96,12 @@ class BoardAndAgentsConfig(BaseModel):
         return self
 
 
-class WorldConfig(BaseModel):
+class WorldConfig(_StrictConfigModel):
     map_area: str = ""
     hint_max_words: int = Field(ge=0, default=15)
 
 
-class MovementAndBarriersConfig(BaseModel):
+class MovementAndBarriersConfig(_StrictConfigModel):
     move_set: list[Direction] = Field(
         default_factory=lambda: [
             Direction.NORTH,
@@ -116,7 +125,7 @@ class MovementAndBarriersConfig(BaseModel):
         return self
 
 
-class ScoringConfig(BaseModel):
+class ScoringConfig(_StrictConfigModel):
     capture_cop: int = 20
     capture_thief: int = 5
     survival_cop: int = 5
@@ -125,7 +134,7 @@ class ScoringConfig(BaseModel):
     technical_loss: int = 0
 
 
-class PheromoneConfig(BaseModel):
+class PheromoneConfig(_StrictConfigModel):
     pheromone_center_intensity: float = 0.9
     pheromone_decay: float = Field(ge=0.0, le=1.0, default=0.10)
     pheromone_grid_size: int = Field(ge=1, default=5)
@@ -137,7 +146,7 @@ class PheromoneConfig(BaseModel):
         return self
 
 
-class NetworkAndLeagueConfig(BaseModel):
+class NetworkAndLeagueConfig(_StrictConfigModel):
     response_timeout_sec: int = 30
     watchdog_timeout_sec: int = 60
     num_games: int = 6
@@ -147,7 +156,7 @@ class NetworkAndLeagueConfig(BaseModel):
     token_budget_per_series: int = 200_000
 
 
-class RateLimiterGatekeeperConfig(BaseModel):
+class RateLimiterGatekeeperConfig(_StrictConfigModel):
     requests_per_minute: int = Field(ge=30, default=30)
     concurrent_requests: int = Field(ge=2, default=2)
     retry_backoff_sec: int = Field(ge=5, default=5)
@@ -155,7 +164,7 @@ class RateLimiterGatekeeperConfig(BaseModel):
     queue_depth: int = Field(ge=100, default=100)
 
 
-class GameConfig(BaseModel):
+class GameConfig(_StrictConfigModel):
     """Mirrors ``config/game.json`` exactly (docs/protocol.md §5)."""
 
     schema_version: str

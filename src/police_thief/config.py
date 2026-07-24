@@ -14,10 +14,19 @@ import json
 import tomllib
 from pathlib import Path
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from police_thief.domain.crypto import hash_state
 from police_thief.domain.models import GameConfig
+
+
+class _StrictPeerModel(BaseModel):
+    """Base for every ``config/<role>/game.toml``-shaped model: an unrecognized
+    field fails loudly at load time instead of being silently ignored
+    (PRD-0570, mirrors ``domain.models._StrictConfigModel``).
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class ConfigError(Exception):
@@ -53,7 +62,7 @@ def shared_config_hash(path: Path) -> str:
     return hash_state(_canonical_json_text(raw))
 
 
-class PeerGameIdentity(BaseModel):
+class PeerGameIdentity(_StrictPeerModel):
     group_name: str
     group_id: str
     sub_game_number: int = 1
@@ -61,13 +70,13 @@ class PeerGameIdentity(BaseModel):
     repos: dict[str, str] = Field(default_factory=dict)
 
 
-class PeerNetworkConfig(BaseModel):
+class PeerNetworkConfig(_StrictPeerModel):
     my_port: int
     opponent_url: str
     turn_timeout_seconds: int = 180
 
 
-class PeerTunnelConfig(BaseModel):
+class PeerTunnelConfig(_StrictPeerModel):
     """Not part of the book's own worked config example -- an extension this
     project adds for FR-006 (tunneling). Defaults to ``"none"`` (localhost
     only), so existing configs keep working unchanged.
@@ -77,26 +86,26 @@ class PeerTunnelConfig(BaseModel):
     manual_public_url: str = ""  # only used when provider == "manual" (e.g. Localtonet)
 
 
-class PeerStrategyConfig(BaseModel):
+class PeerStrategyConfig(_StrictPeerModel):
     thief_class: str | None = None
     police_class: str | None = None
 
 
-class PeerTrashTalkConfig(BaseModel):
+class PeerTrashTalkConfig(_StrictPeerModel):
     provider: str = "template"
 
 
-class PeerLLMConfig(BaseModel):
+class PeerLLMConfig(_StrictPeerModel):
     model: str = "template"
     step_deadline_seconds: int = 30
 
 
-class PeerEmailConfig(BaseModel):
+class PeerEmailConfig(_StrictPeerModel):
     recipient: str
     mode: str = "draft"
 
 
-class PeerConfig(BaseModel):
+class PeerConfig(_StrictPeerModel):
     """Mirrors ``config/<role>/game.toml`` exactly (docs/protocol.md §6)."""
 
     version: str
