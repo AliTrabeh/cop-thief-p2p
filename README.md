@@ -115,10 +115,16 @@ config/            # real, working config (not just test fixtures)
 scripts/           # PowerShell demo/test runners
 tests/             # unit / network / integration / e2e
 docs/              # requirements, architecture, protocol, plan, testing strategy, assumptions,
-                   # traceability matrix, progress log, final audit
+                   # traceability matrix, progress log, final audit, status board, PRD
 ```
 
 See `docs/progress.md` for the full, dated history of every implementation part.
+
+**Two more planning docs worth knowing about:** `docs/STATUS.md` gives a one-page, phase-by-phase
+status board (18 implementation phases + 2 bonus phases, done/in-progress/not-started at a glance)
+— the fastest way to answer "what's left." `docs/PRD.md` is the full product requirements document:
+611 individually numbered, prioritized requirements (`PRD-0001`–`PRD-0611`) covering every subsystem
+in more granular detail than the `FR-xxx`/`NFR-xxx` IDs in `docs/requirements_traceability.md`.
 
 ## 6. Running it
 
