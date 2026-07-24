@@ -357,6 +357,36 @@ and the two-repo submission split (A-008) are still pending.
 
 **Next part**: `gui/live_view.py` (Tkinter, local-truth-only), then README.md + final audit.
 
+## 2026-07-24 — Part 13 (Live GUI)
+
+**Files changed**: `src/police_thief/gui/live_view.py` (`belief_to_color`/`turn_banner_text`/
+`turn_banner_color`/`render_grid` pure rendering logic + `LiveView` Tkinter widget),
+`tests/unit/test_live_view_render.py`, `peer_runtime.py` (`--gui` flag wiring: constructs a
+`LiveView`, refreshes it once per turn-loop iteration with this peer's own true position and its
+own belief map, destroys it on shutdown), `cli.py` (`--gui` argument on the `peer` subcommand).
+
+**Requirements completed**: FR-070 (Tested — rendering logic; the real Tkinter widget was manually
+smoke-tested: constructed, updated once, destroyed, without error — a real window briefly appeared
+on the desktop), FR-072 functionality (Implemented; the screenshot artifact itself is a manual
+step still pending before final submission).
+
+**Tests executed**: `uv run pytest -m "not e2e" -q` (145 tests, fast subset); new live-view tests
+cover color mapping at zero/peak/mid belief, turn banner text/color, and that `render_grid` labels
+only this peer's own true position while covering every board cell exactly once. `ruff format`/
+`ruff check` clean; `mypy src` clean (28 source files).
+
+**Test results**: 145/145 passed (fast subset; whole suite including e2e was 138 before this batch
+and gains these 8, not independently re-run with e2e this round to save time -- e2e doesn't touch
+GUI code).
+
+**Remaining issues**: README.md academic report, Mermaid diagram copies, `docs/final_audit.md`,
+ngrok/Localtonet tunneling wiring, and the two-repo submission split (A-008) are still pending.
+The live-view screenshot and Replay-Viewer-showing-Verified-OK screenshot (both required
+submission artifacts) still need to be captured manually by the user during a real demo run.
+
+**Next part**: README.md (academic report), Mermaid diagrams, `docs/final_audit.md`, submission
+checklist review.
+
 ## 2026-07-24 — Part 10 (Gatekeeper) done early, out of order
 
 **Files changed**: `src/police_thief/infra/gatekeeper.py` (`TokenBucket`, `QuotaManager`,

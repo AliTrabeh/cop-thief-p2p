@@ -67,6 +67,7 @@ async def run_peer(
     output_dir: Path | None = None,
     poll_interval: float = 0.5,
     max_wait_seconds: float = 180.0,
+    show_gui: bool = False,
 ) -> Orchestrator:
     """Run one full game as ``role`` and return the finished Orchestrator."""
     try:
@@ -100,6 +101,23 @@ async def run_peer(
         timeout_seconds=float(game_config.network_and_league.response_timeout_sec),
     )
 
+    view = None
+    if show_gui:
+        from police_thief.gui.live_view import LiveView
+
+        view = LiveView(
+            grid_size=game_config.board_and_agents.grid_size, own_label=role.value[0].upper()
+        )
+
+    def _refresh_gui(is_my_turn: bool) -> None:
+        if view is None:
+            return
+        from police_thief.domain.scent import belief_map
+
+        belief = belief_map(orch.opponent_scent, game_config.board_and_agents.grid_size)
+        view.update(orch.board.position_of(role), belief, is_my_turn)
+        view.root.update()
+
     expected_mover_parity = 0 if role is Role.POLICE else 1
     waited = 0.0
     try:
@@ -110,7 +128,9 @@ async def run_peer(
         if not reachable:
             orch.mark_opponent_unresponsive(max_wait_seconds)
         while not orch.is_over:
-            if orch.board.moves_made % 2 == expected_mover_parity:
+            my_turn = orch.board.moves_made % 2 == expected_mover_parity
+            _refresh_gui(my_turn)
+            if my_turn:
                 logger.info("turn %d: computing move", orch.turn_number)
                 await _play_own_turn(orch, client)
                 waited = 0.0
@@ -121,6 +141,7 @@ async def run_peer(
                     orch.mark_opponent_unresponsive(waited)
                     break
 
+        _refresh_gui(False)
         try:
             await client.send(orch.produce_final_reveal())
         except PeerUnreachableError:
@@ -129,6 +150,8 @@ async def run_peer(
         server_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await server_task
+        if view is not None:
+            view.root.destroy()
 
     if output_dir is not None:
         _write_deliverables(orch, peer_config, game_id, output_dir)

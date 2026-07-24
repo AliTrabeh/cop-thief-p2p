@@ -46,9 +46,9 @@ and every entry in `docs/progress.md`.
 | FR-062 | `strategy/llm_bluff.py` (Part 8) | — | Planned | " |
 | FR-063 | `strategy/llm_bluff.py` (Part 8) | — | Planned | " |
 | FR-064 | `domain/models.py::WorldConfig.hint_max_words` | `tests/unit/test_board.py` (config validation) | Implemented | " |
-| FR-070 | `gui/live_view.py` | `tests/unit/test_live_view_render.py` | Planned | architecture.md §1 |
+| FR-070 | `gui/live_view.py` (render_grid/belief_to_color/turn_banner_*, `LiveView` Tkinter widget), wired via `peer_runtime.py`'s `--gui` flag | `tests/unit/test_live_view_render.py` (render logic); real widget smoke-tested manually (needs a display) | Tested (logic) / Implemented (widget) | architecture.md §1 |
 | FR-071 | `gui/replay_viewer.py` (verify_step/replay/load_log/verify_log_file) | `tests/unit/test_replay_viewer.py`, `tests/integration/test_two_peer_game.py` | Tested | " |
-| FR-072 | `gui/live_view.py` (Planned); `gui/replay_viewer.py` (verification logic Tested, screenshot still manual) | manual screenshot pending | Planned | docs/final_audit.md (future) |
+| FR-072 | `gui/live_view.py` (Implemented); `gui/replay_viewer.py` (Tested) | manual screenshot pending for the final submission | Implemented (functionality) / Planned (screenshot artifact) | docs/final_audit.md (future) |
 | FR-080 | `infra/gmail_report.py` (send-only scope, Gatekeeper-guarded) | `tests/unit/test_gmail_report.py` | Tested | protocol.md §7 |
 | FR-081 | `infra/gmail_report.py::report_match_result`, `infra/reporting.py::build_result` | `tests/unit/test_gmail_report.py`, `tests/unit/test_reporting.py` | Tested | " |
 | FR-082 | `infra/reporting.py` (all four deliverable files) | `tests/unit/test_reporting.py` | Tested | " |

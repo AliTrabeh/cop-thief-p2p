@@ -42,6 +42,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=180.0,
         help="give up on an unresponsive opponent after this many seconds",
     )
+    peer.add_argument(
+        "--gui",
+        action="store_true",
+        help="show the local-truth-only live belief heatmap (requires a display)",
+    )
     peer.set_defaults(handler=_run_peer)
 
     replay = subparsers.add_parser("replay", help="verify and replay a finished game log")
@@ -71,6 +76,7 @@ def _run_peer(args: argparse.Namespace) -> int:
                 args.game_id,
                 output_dir=args.output_dir,
                 max_wait_seconds=args.max_wait_seconds,
+                show_gui=args.gui,
             )
         )
     except PeerRuntimeError as exc:
