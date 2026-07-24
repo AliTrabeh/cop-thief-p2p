@@ -27,8 +27,9 @@ from police_thief.infra.mcp_client import MCPPeerClient, PeerUnreachableError
 from police_thief.infra.mcp_server import build_server
 from police_thief.infra.reporting import build_result, write_match_deliverables
 from police_thief.infra.tunnel import TunnelError, start_tunnel
+from police_thief.infra.vcs import current_commit_hash
 from police_thief.logging_setup import get_logger
-from police_thief.orchestrator import Orchestrator
+from police_thief.orchestrator import Orchestrator, TechnicalLossError
 from police_thief.strategy.base import BrainBase, load_brain_class
 from police_thief.strategy.heuristic import HeuristicPoliceBrain, HeuristicThiefBrain
 
@@ -149,7 +150,10 @@ async def run_peer(
             _refresh_gui(my_turn)
             if my_turn:
                 logger.info("turn %d: computing move", orch.turn_number)
-                await _play_own_turn(orch, client)
+                try:
+                    await _play_own_turn(orch, client)
+                except TechnicalLossError as exc:
+                    logger.error("own turn ended in technical loss: %s", exc)
                 waited = 0.0
             else:
                 await asyncio.sleep(poll_interval)
@@ -188,7 +192,7 @@ def _write_deliverables(
         orch=orch,
         game_id=game_id,
         sub_game_number=peer_config.game.sub_game_number,
-        commit_hash="unknown",  # filled in manually per game per E-53; not derivable at runtime
+        commit_hash=current_commit_hash(),  # FR-087: real HEAD hash, "unknown" if not a checkout
         timestamp=timestamp,
     )
     logger.info("wrote match deliverables: %s", {k: str(v) for k, v in paths.items()})

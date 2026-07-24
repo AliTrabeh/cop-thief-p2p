@@ -148,7 +148,13 @@ class Orchestrator:
         """Decide an action via the strategy module and commit to it."""
         self.phase.transition(GamePhase.COMPUTING_MOVE)
         view = build_belief_view(self.board, self.opponent_scent, self.role)
-        action = self.brain.decide(view)
+        try:
+            action = self.brain.decide(view)
+        except Exception as exc:  # noqa: BLE001 - a buggy pluggable brain (FR-060) must
+            # become our own technical loss, never an unhandled crash of the whole peer
+            # process (PRD-0286/PRD-0573).
+            self._fail(f"strategy raised {exc.__class__.__name__}: {exc}", disqualified=self.role)
+            raise TechnicalLossError(self.technical_loss_reason or "strategy error") from exc
         state_hash = hash_state(_canonical_board_snapshot(self.board))
         move_str = _action_to_move_str(action)
         h_commit, nonce = crypto_commit(state=state_hash, move=move_str, intent="truth")

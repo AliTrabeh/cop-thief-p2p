@@ -6,8 +6,17 @@ from police_thief.domain.board import BoardState
 from police_thief.domain.models import Coordinate, Role
 from police_thief.domain.state_machine import GamePhase
 from police_thief.infra.protocol import MessageType, ProtocolMessage, ProtocolResponse, RejectReason
-from police_thief.orchestrator import Orchestrator
+from police_thief.orchestrator import Orchestrator, TechnicalLossError
+from police_thief.strategy.base import BeliefView, BrainBase
 from police_thief.strategy.heuristic import HeuristicPoliceBrain, HeuristicThiefBrain
+
+
+class _CrashingBrain(BrainBase):
+    """A pluggable strategy (FR-060) that's simply buggy -- must never take
+    down the whole peer process (PRD-0286/PRD-0573)."""
+
+    def _pick_move(self, view: BeliefView):  # noqa: ANN001, ANN201 - test double
+        raise RuntimeError("boom")
 
 
 def make_orchestrator(game_config, role: Role) -> Orchestrator:
@@ -61,6 +70,27 @@ def test_confirm_reveal_rejected_causes_technical_loss(game_config):
     assert orch.technical_loss_reason is not None
     assert orch.technical_loss_role is Role.POLICE  # we (police) are the disqualified side here
     assert orch.is_over
+
+
+def test_produce_commit_with_crashing_brain_becomes_own_technical_loss(game_config):
+    board = BoardState.initial(game_config)
+    orch = Orchestrator(
+        role=Role.POLICE,
+        game_id="test-game",
+        config=game_config,
+        board=board,
+        brain=_CrashingBrain(),
+    )
+    try:
+        orch.produce_commit()
+    except TechnicalLossError:
+        pass
+    else:
+        raise AssertionError("expected TechnicalLossError from a crashing brain")
+    assert orch.is_over
+    assert orch.phase.state is GamePhase.TECHNICAL_LOSS
+    assert orch.technical_loss_role is Role.POLICE
+    assert "RuntimeError" in (orch.technical_loss_reason or "")
 
 
 def test_receive_commit_does_not_mutate_the_board(game_config):
