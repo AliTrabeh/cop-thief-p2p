@@ -15,7 +15,8 @@ from typing import TYPE_CHECKING
 
 from police_thief.config import ConfigError, PeerConfig, load_game_config, load_peer_config
 from police_thief.domain.board import BoardState
-from police_thief.domain.models import GameConfig, Role
+from police_thief.domain.game_config import GameConfig
+from police_thief.domain.models import Role
 from police_thief.infra.mcp_client import MCPPeerClient
 from police_thief.infra.mcp_server import build_server
 from police_thief.infra.tunnel import TunnelError, TunnelHandle, start_tunnel

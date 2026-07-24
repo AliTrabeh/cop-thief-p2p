@@ -9,7 +9,7 @@ from collections.abc import Callable
 
 import pytest
 
-from police_thief.domain.models import (
+from police_thief.domain.game_config import (
     BoardAndAgentsConfig,
     GameConfig,
     MovementAndBarriersConfig,

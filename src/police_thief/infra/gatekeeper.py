@@ -13,7 +13,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from police_thief.domain.models import RateLimiterGatekeeperConfig
+from police_thief.domain.rate_limiter_config import RateLimiterGatekeeperConfig
 
 Clock = Callable[[], float]
 

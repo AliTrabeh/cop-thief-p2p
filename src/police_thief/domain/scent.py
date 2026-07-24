@@ -16,7 +16,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from police_thief.domain.models import Coordinate, GameConfig
+from police_thief.domain.game_config import GameConfig
+from police_thief.domain.models import Coordinate
 
 
 @dataclass

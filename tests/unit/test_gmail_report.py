@@ -128,7 +128,7 @@ def test_report_match_result_send_mode_blocked_by_gatekeeper(tmp_path: Path):
 
 
 def _rate_limiter_config(**overrides: object):
-    from police_thief.domain.models import RateLimiterGatekeeperConfig
+    from police_thief.domain.rate_limiter_config import RateLimiterGatekeeperConfig
 
     base: dict[str, object] = {
         "requests_per_minute": 30,

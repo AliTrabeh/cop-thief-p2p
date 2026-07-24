@@ -22,7 +22,8 @@ from dataclasses import dataclass, field
 from police_thief import orchestrator_messages as _messages
 from police_thief import orchestrator_turn as _turn
 from police_thief.domain.board import BoardState, Outcome
-from police_thief.domain.models import GameConfig, Role
+from police_thief.domain.game_config import GameConfig
+from police_thief.domain.models import Role
 from police_thief.domain.scent import ScentField
 from police_thief.domain.state_machine import GamePhase, GamePhaseMachine, IllegalTransitionError
 from police_thief.infra.protocol import ProtocolMessage, ProtocolResponse

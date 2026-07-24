@@ -10,7 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from police_thief.domain.models import Coordinate, Direction, GameConfig, Role
+from police_thief.domain.game_config import GameConfig
+from police_thief.domain.models import Coordinate, Direction, Role
 
 
 class IllegalActionError(Exception):

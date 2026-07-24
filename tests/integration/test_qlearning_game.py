@@ -10,12 +10,12 @@ from __future__ import annotations
 import asyncio
 
 from police_thief.domain.board import BoardState, Outcome
-from police_thief.domain.models import (
+from police_thief.domain.game_config import (
     BoardAndAgentsConfig,
     GameConfig,
     MovementAndBarriersConfig,
-    Role,
 )
+from police_thief.domain.models import Role
 from police_thief.gui.replay_viewer import replay
 from police_thief.infra.mcp_client import MCPPeerClient
 from police_thief.infra.mcp_server import build_server

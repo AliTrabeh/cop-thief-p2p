@@ -17,7 +17,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from police_thief.domain.crypto import hash_state
-from police_thief.domain.models import GameConfig
+from police_thief.domain.game_config import GameConfig
 
 
 class _StrictPeerModel(BaseModel):

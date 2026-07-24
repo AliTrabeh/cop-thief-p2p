@@ -12,7 +12,8 @@ from typing import Any
 
 from police_thief.config import PeerConfig
 from police_thief.domain.board import Outcome
-from police_thief.domain.models import GameConfig, Role
+from police_thief.domain.game_config import GameConfig
+from police_thief.domain.models import Role
 from police_thief.domain.scoring import score, technical_loss_score
 from police_thief.orchestrator import Orchestrator
 

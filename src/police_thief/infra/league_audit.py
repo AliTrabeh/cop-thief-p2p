@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from police_thief.domain.models import NetworkAndLeagueConfig
+from police_thief.domain.game_config import NetworkAndLeagueConfig
 
 
 @dataclass(frozen=True)

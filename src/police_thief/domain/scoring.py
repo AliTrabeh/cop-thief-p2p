@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from police_thief.domain.board import BoardState, Outcome
-from police_thief.domain.models import GameConfig, Role
+from police_thief.domain.game_config import GameConfig
+from police_thief.domain.models import Role
 
 
 def score(board: BoardState) -> tuple[int, int]:

@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from police_thief.domain.models import NetworkAndLeagueConfig
+from police_thief.domain.game_config import NetworkAndLeagueConfig
 from police_thief.infra.league_audit import audit_league_series
 
 LEAGUE_CONFIG = NetworkAndLeagueConfig(min_games_to_pass=2, max_games_per_team=10, num_games=6)

@@ -10,7 +10,8 @@ import pytest
 from pydantic import ValidationError
 
 from police_thief.domain.board import BoardState, IllegalActionError, Outcome
-from police_thief.domain.models import BoardAndAgentsConfig, Coordinate, Direction, Role
+from police_thief.domain.game_config import BoardAndAgentsConfig
+from police_thief.domain.models import Coordinate, Direction, Role
 
 
 def test_initial_positions_from_config(game_config):
