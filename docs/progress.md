@@ -387,6 +387,35 @@ submission artifacts) still need to be captured manually by the user during a re
 **Next part**: README.md (academic report), Mermaid diagrams, `docs/final_audit.md`, submission
 checklist review.
 
+## 2026-07-24 — README, final audit, traceability matrix corrections
+
+**Files changed**: `README.md` (new — the academic report: Dec-POMDP model description, P2P/
+FastMCP/tunneling trade-off discussion, commit-reveal anti-cheat summary, strategy pluggability,
+project structure, running instructions, testing summary, traceability pointer, known
+limitations), `docs/final_audit.md` (new — the 20-point audit from the working instructions, done
+honestly: most items pass, three concrete gaps called out by name), `docs/
+requirements_traceability.md` (corrected ~15 stale rows that had been left at their Part-1 planning
+baseline despite the requirement being fully implemented and tested since — FR-001..006, FR-032,
+FR-044, FR-084..088, NFR-002/003, DOC-001..005).
+
+**Requirements completed**: DOC-001 (Implemented), DOC-004 (Implemented via final_audit.md).
+Traceability corrections don't change what's implemented, only fix the bookkeeping to match reality.
+
+**Tests executed**: `uv run pytest -m "not e2e" -q` (145 tests, fast subset, unaffected by
+documentation-only changes); `ruff format`/`ruff check` clean; `mypy src` clean (28 source files).
+
+**Test results**: 145/145 passed.
+
+**Remaining issues** (all explicitly listed in `docs/final_audit.md` §20 and `README.md` §9):
+tunneling lifecycle (`infra/tunnel.py`), LLM banter provider (`strategy/llm_bluff.py`), multi-game
+league audit (FR-083), the two-repo submission split (A-008), the real GitHub commit hash in the
+declaration JSON (currently a placeholder), a real (non-draft) Gmail send confirmation, and the
+live-view/Replay-Viewer screenshot artifacts for the submission checklist.
+
+**Next part**: none currently planned — remaining work is the explicitly-listed gaps above, most
+of which require either a user decision (two-repo split, real Google account for Gmail) or
+additional implementation time (tunneling, LLM banter) beyond this session's scope.
+
 ## 2026-07-24 — Part 10 (Gatekeeper) done early, out of order
 
 **Files changed**: `src/police_thief/infra/gatekeeper.py` (`TokenBucket`, `QuotaManager`,
