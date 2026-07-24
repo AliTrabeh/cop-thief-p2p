@@ -10,23 +10,26 @@ TEST-001..007, DOC-001..005, plus Appendix E items E-1..E-55) is listed in
 `docs/requirements_traceability.md` with a module, a test, and a status. Summary:
 
 - **Tested** (implemented + automated test passes): the large majority — all core game rules,
-  crypto, scent/belief, state machine, strategy, FastMCP transport, Orchestrator, Gatekeeper,
-  reporting, Gmail (draft-mode), CLI, live-view rendering logic, and the full two-real-process e2e
-  scenario.
+  crypto, scent/belief, state machine, strategy, FastMCP transport, tunneling (`infra/tunnel.py`,
+  ngrok automated + fully unit-tested with faked externals), Orchestrator, Gatekeeper, reporting,
+  Gmail (draft-mode), CLI, live-view rendering logic, and the full two-real-process e2e scenario.
 - **Implemented** (working, but not independently unit-tested, or a manual-only artifact): the
   live GUI's actual Tkinter widget (smoke-tested manually, not exercised in CI since it needs a
-  display), Step-0 hardware declaration emission.
-- **Planned** (not yet built): `infra/tunnel.py` (ngrok/Localtonet lifecycle), `strategy/llm_bluff.py`
-  (banter provider), the mutual daily-log/games-played-count audit (FR-083, a multi-game-series
-  concern), the two-repo submission split (A-008).
+  display), Step-0 hardware declaration emission, ngrok automation (unit-tested with every external
+  dependency faked, but never run against a real `ngrok` binary — none was available in this
+  development environment).
+- **Planned** (not yet built): `strategy/llm_bluff.py` (banter provider), the mutual
+  daily-log/games-played-count audit (FR-083, a multi-game-series concern), the two-repo submission
+  split (A-008).
 
 No requirement was silently dropped; every "Planned" row states what's missing and why.
 
 ## 2. Every functional requirement has an implementation
 
-True for all FR-xxx rows marked Tested or Implemented in the traceability matrix. The three
-exceptions (tunneling, LLM banter, multi-game audit) are explicitly called out as Planned, with the
-reasoning in `docs/progress.md`'s per-part entries and `README.md`'s Known Limitations section.
+True for all FR-xxx rows marked Tested or Implemented in the traceability matrix. The remaining
+exceptions (LLM banter, multi-game audit, two-repo split) are explicitly called out as Planned,
+with the reasoning in `docs/progress.md`'s per-part entries and `README.md`'s Known Limitations
+section.
 
 ## 3. Every critical requirement has a test
 
@@ -123,9 +126,10 @@ was created fresh for this project; no history to scrub).
 ## 17. No placeholder TODOs remain in required functionality
 
 `cli.py`'s `peer`/`replay` subcommands are fully implemented (no more `NotImplementedError`). The
-three "Planned" items (tunneling, LLM banter, multi-game audit) are absent modules, not TODO-stubbed
-functions pretending to work — they simply don't exist yet, which is the honest state per the
-working instructions ("do not create placeholder implementations and claim they are complete").
+remaining "Planned" items (LLM banter, multi-game audit, two-repo split) are absent modules, not
+TODO-stubbed functions pretending to work — they simply don't exist yet, which is the honest state
+per the working instructions ("do not create placeholder implementations and claim they are
+complete").
 
 ## 18. No dead files or obsolete duplicate implementations remain
 
@@ -174,6 +178,8 @@ uv run python -m police_thief replay --help
 
 ## Known limitations (repeated from README.md for completeness)
 
-See `README.md` §9. In short: tunneling lifecycle, LLM banter provider, and the two-repo split are
-the three concrete gaps; everything else in the spec that this project claims to implement has a
+See `README.md` §9. In short: LLM banter provider, the multi-game league audit, and the two-repo
+split are the concrete remaining gaps (tunneling was closed in a later pass — ngrok is now fully
+automated and unit-tested, though not yet run against a real ngrok install or remote rival);
+everything else in the spec that this project claims to implement has a
 passing automated test or a documented manual verification.

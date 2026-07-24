@@ -12,6 +12,10 @@ my_port = 8802
 opponent_url = "http://127.0.0.1:8801/mcp"
 turn_timeout_seconds = 180
 
+[tunnel]                             # only needed for a genuinely remote rival; localhost demo doesn't use this
+provider = "none"                    # "none" (localhost) | "ngrok" (automated) | "manual" (e.g. Localtonet)
+manual_public_url = ""               # only used when provider = "manual" -- paste your tunnel's public URL here
+
 # [strategy]  -- optional: point at your own brain subclass (else the shipped heuristic runs)
 # thief_class = "my_team.strategy:MyThiefBrain"
 

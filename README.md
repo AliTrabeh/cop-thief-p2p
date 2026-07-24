@@ -46,10 +46,13 @@ communication, rather than inventing a bespoke socket protocol.
 
 **The tunneling trade-off.** For genuinely remote play (a real league match against another
 group's machine), each side must expose its local FastMCP server publicly — the spec recommends a
-local tunneling tool (ngrok / Localtonet) for NAT traversal. This project's `peer_runtime.py`
-currently binds `0.0.0.0` and is tunnel-ready, but tunnel *lifecycle management* (`infra/tunnel.py`)
-is not yet wired in — see [Known Limitations](#known-limitations). Localhost-only play (the
-two-terminal demo below) needs no tunnel at all.
+local tunneling tool (ngrok / Localtonet) for NAT traversal. `infra/tunnel.py` automates **ngrok**
+end-to-end (starts it, discovers the assigned public URL via ngrok's own local admin API, tears it
+down on shutdown); for any other tool (Localtonet included, since its local API isn't something
+this project could verify without guessing — see `docs/assumptions.md` A-018), set
+`[tunnel].provider = "manual"` in `config/<role>/game.toml` and paste the public URL your tool gives
+you into `manual_public_url`. `provider = "none"` (the default) skips tunneling entirely.
+Localhost-only play (the two-terminal demo below) needs no tunnel at all.
 
 **Why a real per-message session costs more than an in-process call.** Every `MCPPeerClient.send()`
 opens a fresh MCP client session (initialize → notify → SSE → close) rather than reusing one
@@ -201,10 +204,13 @@ that are resolved there rather than silently picked one way.
 - **Two-repository submission split not yet done.** The spec requires two separate GitHub repos
   (cop-owned, thief-owned), cross-linked. This project currently lives in one repository
   (`AliTrabeh/cop-thief-p2p`) for development convenience. See `docs/assumptions.md` A-008.
-- **Tunneling (ngrok/Localtonet) lifecycle is not wired.** The FastMCP server already binds
-  `0.0.0.0` and is tunnel-ready, but there's no `infra/tunnel.py` yet to automatically start/stop a
-  tunnel and rewrite `opponent_url` accordingly — needed for a real cross-machine league match, not
-  for the localhost demo.
+- **Tunneling is automated for ngrok only; not end-to-end tested against a real remote rival.**
+  `infra/tunnel.py`'s ngrok automation is unit-tested with every external dependency faked (no real
+  `ngrok` binary was available in this development environment); it hasn't yet been run against a
+  real `ngrok` install or a genuinely remote opponent. Note that starting a tunnel exposes *this
+  peer's own port* publicly — the discovered public URL still has to be given to your rival
+  out-of-band (chat/email) so they can set it as *their* `opponent_url`; there's no automatic
+  exchange of tunnel URLs between peers.
 - **LLM banter provider (`strategy/llm_bluff.py`) is not implemented.** The `[trash_talk]` /
   `[llm]` config sections exist and default to the zero-cost `template` mode, but no provider code
   reads them yet — banter is currently a no-op.

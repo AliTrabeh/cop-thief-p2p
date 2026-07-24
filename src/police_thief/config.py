@@ -67,6 +67,16 @@ class PeerNetworkConfig(BaseModel):
     turn_timeout_seconds: int = 180
 
 
+class PeerTunnelConfig(BaseModel):
+    """Not part of the book's own worked config example -- an extension this
+    project adds for FR-006 (tunneling). Defaults to ``"none"`` (localhost
+    only), so existing configs keep working unchanged.
+    """
+
+    provider: str = "none"  # "none" | "ngrok" | "manual"
+    manual_public_url: str = ""  # only used when provider == "manual" (e.g. Localtonet)
+
+
 class PeerStrategyConfig(BaseModel):
     thief_class: str | None = None
     police_class: str | None = None
@@ -92,6 +102,7 @@ class PeerConfig(BaseModel):
     version: str
     game: PeerGameIdentity
     network: PeerNetworkConfig
+    tunnel: PeerTunnelConfig = Field(default_factory=PeerTunnelConfig)
     strategy: PeerStrategyConfig = Field(default_factory=PeerStrategyConfig)
     trash_talk: PeerTrashTalkConfig = Field(default_factory=PeerTrashTalkConfig)
     llm: PeerLLMConfig = Field(default_factory=PeerLLMConfig)

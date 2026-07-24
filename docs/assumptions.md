@@ -185,3 +185,23 @@ order alternates strictly, cop first (an arbitrary but documented default, since
 specifies it) — matching `cop_start` being listed first in Appendix F Table 13 and the config
 schema. A future `config/game.json` field could make this explicit if the book's official answer
 key ever specifies otherwise.
+
+### A-018 — Tunneling automation: ngrok fully automated, Localtonet manual-only
+
+§2.4.1 recommends "a local tunneling tool (e.g. ngrok, or Localtonet)" for NAT traversal but doesn't
+mandate one specific tool or describe either tool's control API. ngrok exposes a well-documented,
+stable local admin API (`http://127.0.0.1:4040/api/tunnels`) that this project's own code can poll
+to discover the assigned public URL without guessing. Localtonet's local introspection API (if any)
+isn't something this codebase could verify without a Localtonet account and installation to test
+against, and fabricating an integration against an unconfirmed API would violate the "don't invent
+behavior you can't confirm works" principle.
+**Decision**: `infra/tunnel.py` fully automates `ngrok` (subprocess + local API polling, matching
+the book's own P2P architecture where each side hides behind one tunnel-issued public URL) and adds
+a `"manual"` provider for anything else (Localtonet included) — the user starts that tool
+themselves per its own instructions and pastes the resulting public URL into
+`config/<role>/game.toml → [tunnel].manual_public_url`; this project's code then just carries that
+URL through to the outgoing report, never fabricating tool-specific automation it can't confirm.
+`provider = "none"` (the default) skips tunneling entirely for the localhost-only demo. The
+`[tunnel]` section itself is an addition to the private config schema not present in the book's own
+worked `config/game.toml` example (Appendix B) — a backward-compatible extension, since it defaults
+to `"none"` and every existing config keeps working unchanged.

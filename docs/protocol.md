@@ -147,6 +147,10 @@ my_port = 8802                                  # this peer's FastMCP server por
 opponent_url = "http://127.0.0.1:8801/mcp"       # the only thing I know about the opponent
 turn_timeout_seconds = 180
 
+[tunnel]                                         # this project's own extension, not in the book's example (assumptions.md A-018)
+provider = "none"                                # "none" (localhost) | "ngrok" (automated) | "manual" (e.g. Localtonet)
+manual_public_url = ""                           # only used when provider = "manual"
+
 [strategy]                                       # optional: point at your brain subclass
 # thief_class  = "my_team.strategy:MyThiefBrain"
 # police_class = "my_team.strategy:MyPoliceBrain"

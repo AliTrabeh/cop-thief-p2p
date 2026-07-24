@@ -1,5 +1,9 @@
 # Progress Log
 
+*Entries are appended in the order work was actually completed during the session, not
+strictly by Part number — some parts were deliberately done out of order (noted in their own
+entry) when they had no dependency on the "next" part in `docs/implementation_plan.md`.*
+
 ## 2026-07-23 — Phase 1: Requirements analysis & planning
 
 **Files changed**: `docs/requirements_analysis.md`, `docs/architecture.md`, `docs/protocol.md`,
@@ -465,3 +469,51 @@ byteidentical check (that requires two peers to exchange hashes over FastMCP, Pa
 only proves the hash function itself is well-behaved.
 
 **Next part**: Part 8 — FastMCP P2P transport + message protocol.
+
+## 2026-07-24 — Gap closure: tunneling (FR-006)
+
+**Files changed**: `src/police_thief/infra/tunnel.py` (new — `TunnelProvider`, `TunnelHandle`,
+`start_ngrok_tunnel` fully automated ngrok lifecycle with every external dependency injectable
+for testing, `start_tunnel` dispatcher adding a `manual` provider for any tool this codebase can't
+safely automate, e.g. Localtonet), `src/police_thief/config.py` (`PeerTunnelConfig`, wired into
+`PeerConfig`), `src/police_thief/peer_runtime.py` (starts/stops the tunnel around the turn loop,
+prints the discovered public URL for the user to share with their rival out-of-band),
+`config/police/game.toml` + `config/thief/game.toml` (new `[tunnel]` section, defaults to
+`provider = "none"` so existing behavior is unchanged), `docs/protocol.md` (config schema updated),
+`docs/assumptions.md` (new A-018: why ngrok is automated but Localtonet is manual-URL-only — its
+local introspection API isn't something this codebase could verify without a Localtonet account to
+test against, and the working instructions are explicit about never fabricating an integration that
+can't be confirmed to work), `tests/unit/test_tunnel.py` (new, 11 tests).
+
+**Requirements completed**: FR-006 (Tested).
+
+**Why this design**: §2.4.1 recommends "ngrok or Localtonet" without specifying either tool's
+control API. ngrok's local admin API (`127.0.0.1:4040/api/tunnels`) is well-documented and stable,
+so it's driven directly. Localtonet's equivalent isn't something this session could verify (no
+account, no way to test against a real instance) — rather than guess at an API and risk shipping
+broken "automation" that silently fails during a real demo, `provider = "manual"` lets the user run
+Localtonet (or literally any other tunnel tool) themselves and just hand this project the resulting
+URL, which is honest about the actual scope of what was verified to work.
+
+**Tests executed**: `uv run pytest -m "not e2e" -q` (156 tests, up from 145); new tunnel tests use
+a `FakeProcess` (stands in for `subprocess.Popen`) and `httpx.MockTransport` (stands in for
+ngrok's local API) so nothing here depends on a real `ngrok` binary or network access — covering
+binary-not-found, successful URL discovery, timeout with no tunnel ever appearing, early process
+exit, all three `TunnelHandle.stop()` paths (running/already-exited/terminate-times-out-so-kill),
+and all three `start_tunnel` dispatch branches (`none`/`manual`/unknown-provider). Also re-ran
+`uv run pytest tests/e2e -v` (the real two-process game) to confirm `provider = "none"` still
+behaves exactly as before — passed, 65s. `ruff format`/`ruff check` clean; `mypy src` clean (29
+source files).
+
+**Test results**: 156/156 passed (fast subset) + the e2e test independently confirmed still
+passing.
+
+**Remaining issues**: ngrok automation has never been run against a real `ngrok` binary (none was
+installed in this development environment) or a genuinely remote opponent — only the fully-faked
+unit tests have exercised it. Localtonet (or any other tool) requires the user to run it manually
+and supply the URL; there is still no automatic exchange of tunnel URLs between the two peers (this
+is inherently a manual, out-of-band step per the book's own P2P design — there's no protocol
+message for it).
+
+**Next**: remaining named gaps are `strategy/llm_bluff.py` (LLM banter provider), FR-083 (multi-game
+league audit), and the two-repo submission split (A-008) — see `docs/final_audit.md`.

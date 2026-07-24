@@ -26,6 +26,7 @@ from police_thief.infra.gmail_report import report_match_result
 from police_thief.infra.mcp_client import MCPPeerClient, PeerUnreachableError
 from police_thief.infra.mcp_server import build_server
 from police_thief.infra.reporting import build_result, write_match_deliverables
+from police_thief.infra.tunnel import TunnelError, start_tunnel
 from police_thief.logging_setup import get_logger
 from police_thief.orchestrator import Orchestrator
 from police_thief.strategy.base import BrainBase, load_brain_class
@@ -96,6 +97,22 @@ async def run_peer(
     )
     await asyncio.sleep(0.3)  # let the server bind before we start dialing out
 
+    tunnel = None
+    try:
+        tunnel = await start_tunnel(
+            peer_config.tunnel.provider,
+            peer_config.network.my_port,
+            manual_public_url=peer_config.tunnel.manual_public_url,
+        )
+    except TunnelError as exc:
+        server_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await server_task
+        raise PeerRuntimeError(f"could not start tunnel: {exc}") from exc
+    if tunnel is not None:
+        logger.info("tunnel up: share this URL with your rival -> %s/mcp", tunnel.public_url)
+        print(f"Public URL for your opponent to use as their opponent_url: {tunnel.public_url}/mcp")
+
     client = MCPPeerClient(
         peer_config.network.opponent_url,
         timeout_seconds=float(game_config.network_and_league.response_timeout_sec),
@@ -150,6 +167,8 @@ async def run_peer(
         server_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await server_task
+        if tunnel is not None:
+            tunnel.stop()
         if view is not None:
             view.root.destroy()
 

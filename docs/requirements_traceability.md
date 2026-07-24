@@ -13,7 +13,7 @@ and every entry in `docs/progress.md`.
 | FR-003 | `domain/state_machine.py` | `tests/unit/test_state_machine.py` | Tested | architecture.md §5 |
 | FR-004 | `infra/mcp_client.py` (Deadline Tracker: timeout+retry+`wait_until_reachable`), `infra/watchdog.py` (Watchdog) | `tests/network/test_mcp_transport.py`, `tests/unit/test_watchdog.py` | Tested | architecture.md §7 |
 | FR-005 | `gui/live_view.py::render_grid` (GUI, primary requirement); the same local-truth boundary is also enforced in `strategy/base.py::BeliefView`/`build_belief_view` | `tests/unit/test_live_view_render.py`, `tests/unit/test_strategy.py::test_thief_brain_never_sees_the_cops_true_position_directly` | Tested | architecture.md §7 |
-| FR-006 | tunneling lifecycle (`infra/tunnel.py`) not yet implemented; server binds `0.0.0.0` and is tunnel-ready | — | Planned | architecture.md §1/§4 |
+| FR-006 | `infra/tunnel.py` (`start_ngrok_tunnel`/`start_tunnel`/`TunnelHandle`), wired into `peer_runtime.py` via `config/<role>/game.toml → [tunnel]`; ngrok fully automated, Localtonet/other tools via `provider="manual"` (assumptions.md A-018) | `tests/unit/test_tunnel.py` (11 tests, all external deps injected/faked — no real ngrok binary needed) | Tested | architecture.md §1/§4, assumptions.md A-018 |
 | FR-010 | `domain/board.py`, `domain/models.py` | `tests/unit/test_board.py` | Tested | requirements_analysis.md §2 |
 | FR-011 | `domain/models.py` | `tests/unit/test_board.py` | Tested | " |
 | FR-012 | `domain/models.py` | `tests/unit/test_board.py` | Tested | " |
@@ -81,7 +81,7 @@ and every entry in `docs/progress.md`.
 - Every Appendix F mandatory-parameters table row is a field in `protocol.md` §5's `game.json`
   schema. ✅
 
-Updated through Part 13 (2026-07-24, see `docs/progress.md` for the dated history of every part).
-Remaining genuinely open items: `infra/tunnel.py` (FR-006), `strategy/llm_bluff.py` (FR-061/062/063,
+Updated through the tunneling gap-closure pass (2026-07-24, see `docs/progress.md` for the dated
+history of every part). Remaining genuinely open items: `strategy/llm_bluff.py` (FR-061/062/063,
 BONUS-002), FR-083 (multi-game-series log/count audit), FR-086 (git tag) and the two-repo split
 (assumptions.md A-008) — all called out explicitly in `docs/final_audit.md`.
