@@ -26,21 +26,29 @@ class SequenceTracker:
     """Protocol-level (not game-rule) bookkeeping: rejects a turn number
     lower than the next expected one (stale) or already processed
     (duplicate, handled idempotently rather than as an error).
+
+    Tracked per :class:`MessageType`: COMMIT and REVEAL legitimately share
+    the same ``turn_number`` (both belong to the same logical turn, sent a
+    few steps apart per docs/protocol.md §3) — deduplicating only by
+    ``turn_number`` would make a REVEAL look like a duplicate of its own
+    turn's earlier COMMIT.
     """
 
-    expected_turn: int = 0
-    _seen: set[int] = field(default_factory=set)
+    expected_turn: dict[MessageType, int] = field(default_factory=dict)
+    _seen: set[tuple[MessageType, int]] = field(default_factory=set)
 
-    def check(self, turn_number: int) -> RejectReason | None:
-        if turn_number in self._seen:
+    def check(self, message_type: MessageType, turn_number: int) -> RejectReason | None:
+        if (message_type, turn_number) in self._seen:
             return RejectReason.DUPLICATE
-        if turn_number < self.expected_turn:
+        if turn_number < self.expected_turn.get(message_type, 0):
             return RejectReason.STALE_TURN
         return None
 
-    def record(self, turn_number: int) -> None:
-        self._seen.add(turn_number)
-        self.expected_turn = max(self.expected_turn, turn_number + 1)
+    def record(self, message_type: MessageType, turn_number: int) -> None:
+        self._seen.add((message_type, turn_number))
+        self.expected_turn[message_type] = max(
+            self.expected_turn.get(message_type, 0), turn_number + 1
+        )
 
 
 def build_server(name: str, handler: MessageHandler, max_payload_fields: int = 32) -> FastMCP:
@@ -69,15 +77,15 @@ def build_server(name: str, handler: MessageHandler, max_payload_fields: int = 3
                 mode="json"
             )
 
-        sequence_issue = tracker.check(parsed.turn_number)
+        sequence_issue = tracker.check(parsed.message_type, parsed.turn_number)
         if sequence_issue is not None:
             # A duplicate of an already-accepted message is not an error to
             # surface loudly, but it is never re-applied (idempotency).
             return ProtocolResponse(accepted=False, reason=sequence_issue).model_dump(mode="json")
 
         response = handler(parsed)
-        if response.accepted and parsed.message_type is not MessageType.ACK:
-            tracker.record(parsed.turn_number)
+        if response.accepted:
+            tracker.record(parsed.message_type, parsed.turn_number)
         return response.model_dump(mode="json")
 
     return mcp

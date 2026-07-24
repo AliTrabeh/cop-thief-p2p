@@ -165,3 +165,23 @@ The working instructions describe a team ("every team member", "credit to all me
 session has one user/contributor. **Decision:** team-identity fields (`group_name`, `members`) in
 `config/game.toml` are populated with placeholder/single-member values the user can edit before
 a real league match; not a blocker for implementation.
+
+### A-017 — Per-turn state-machine mapping and turn order
+
+Figure 11's caption says the state machine "operates for a single game turn" but doesn't spell out
+which side transitions through `AWAITING_REVEAL`/`VERIFYING` or in what order the two sides
+alternate. §3.4's "in each turn a *single* agent may perform one of four actions" confirms turns
+alternate between exactly one mover at a time (not simultaneous double-moves), consistent with
+`max_moves` being one shared total budget across both sides, not per-side.
+**Decision** (`orchestrator.py`): (1) the active mover's own `Orchestrator` instance runs the full
+`WAITING_FOR_OPPONENT -> COMPUTING_MOVE -> COMMITTING -> AWAITING_REVEAL -> VERIFYING ->
+WAITING_FOR_OPPONENT` cycle; `VERIFYING` here means "the opponent's tool-call response confirmed
+the revealed move was immediately legal" — the full cryptographic proof that a reveal matches its
+original commit is only possible once every nonce is known, at end-of-game (§5.4), and is the
+Replay Viewer's job (Part 13), not this per-turn cycle. (2) The idle side's `Orchestrator` does
+*not* transition its own phase machine while just receiving the mover's COMMIT/REVEAL messages —
+each side's phase machine models only its own turn-taking, not a shared cross-peer state. (3) Turn
+order alternates strictly, cop first (an arbitrary but documented default, since no table entry
+specifies it) — matching `cop_start` being listed first in Appendix F Table 13 and the config
+schema. A future `config/game.json` field could make this explicit if the book's official answer
+key ever specifies otherwise.

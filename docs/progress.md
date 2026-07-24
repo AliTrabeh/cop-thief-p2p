@@ -192,6 +192,51 @@ exercised in the Part 16 end-to-end demo, not unit/network tests.
 
 **Next part**: Part 9 — Orchestrator, reliability patterns (Watchdog/Deadline Tracker wiring).
 
+## 2026-07-24 — Part 9: Orchestrator + Watchdog
+
+**Files changed**: `src/police_thief/orchestrator.py` (`Orchestrator`, `LogEntry`, own-turn commit/
+reveal/apply cycle, incoming COMMIT/REVEAL handling, technical-loss detection), `src/police_thief/
+infra/watchdog.py` (`Watchdog`, injectable-clock heartbeat/staleness check), `tests/unit/
+test_watchdog.py`, `tests/unit/test_orchestrator.py`, `tests/integration/test_two_peer_game.py`
+(two independent `Orchestrator` instances — separate `BoardState` mirrors, no shared memory —
+playing a complete game over the real Part-8 FastMCP transport). Moved `tests/unit/conftest.py` to
+`tests/conftest.py` so integration tests can reuse it (with a small local duplicate in the
+integration test file itself, since `tests/` isn't an importable package under pytest's default
+import mode). Added assumption A-017 (per-turn state-machine mapping + turn order: cop moves
+first, strict alternation, `VERIFYING` means "opponent confirmed immediate legality" not full
+crypto proof, which is deferred to end-of-game per §5.4).
+
+**Requirements completed**: FR-052 (Tested, orchestrator-wired), FR-053 (Tested — Deadline Tracker
+is the already-built `MCPPeerClient` retry/timeout policy), FR-054 (Tested), FR-042/FR-043
+end-to-end (Tested via a real two-peer game, not just the crypto primitives in isolation), FR-016
+(Implemented — barrier placements are always revealed, never silent).
+
+**Bug found and fixed during integration testing**: `infra/mcp_server.py`'s `SequenceTracker`
+originally deduplicated by `turn_number` alone, which incorrectly flagged a turn's REVEAL message
+as a "duplicate" of that same turn's earlier COMMIT message (both legitimately share one
+`turn_number`). Fixed by keying dedup/staleness on `(message_type, turn_number)` instead. This is
+exactly the kind of bug the working instructions ask integration tests to catch, and it did.
+
+**Tests executed**: `uv run pytest -q` (109 tests total, whole suite). New tests: 5 Watchdog
+tests (alive/stale/shutdown/on-timeout-once/stays-shutdown, all with a `FakeClock`), 9 Orchestrator
+unit tests (commit/reveal/apply cycle, technical loss on own-action illegality and on opponent
+rejection, incoming COMMIT doesn't mutate the board, incoming REVEAL applies + updates belief
+scent, illegal/malformed incoming REVEAL handled distinctly, turn-number advances correctly over 3
+cycles), 2 integration tests (a full local game reaching a definitive outcome with both sides'
+independent board mirrors agreeing exactly; a short-fused capture scenario detected symmetrically
+by both sides). `ruff format`/`ruff check` clean; `mypy src` clean (22 source files).
+
+**Test results**: 109/109 passed.
+
+**Remaining issues**: `FINAL_REVEAL`/end-of-game mutual audit (nonce disclosure + full
+commit/reveal cryptographic re-verification) is not yet wired into the Orchestrator — that's the
+Replay Viewer's job (Part 13) and will reuse `domain/crypto.py::verify` directly against the
+completed `own_log`/`opponent_log`. A true two-OS-process run (vs. today's in-process FastMCP
+transport) is still Part 16's job via the CLI.
+
+**Next part**: Part 11 — CLI wiring (peer/replay subcommands actually running games), then Part 13
+GUI/Replay Viewer, then Part 12 Gmail reporting.
+
 ## 2026-07-24 — Part 10 (Gatekeeper) done early, out of order
 
 **Files changed**: `src/police_thief/infra/gatekeeper.py` (`TokenBucket`, `QuotaManager`,

@@ -20,7 +20,7 @@ and every entry in `docs/progress.md`.
 | FR-013 | `domain/models.py` | `tests/unit/test_board.py` | Tested | assumptions.md A-003 |
 | FR-014 | `domain/board.py` | `tests/unit/test_board.py` | Tested | assumptions.md A-010 |
 | FR-015 | `domain/board.py` | `tests/unit/test_board.py` | Tested | " |
-| FR-016 | `domain/board.py`, log manager | `tests/integration/test_orchestrator.py` | Planned | architecture.md §6 |
+| FR-016 | `domain/board.py` (barrier legality itself); public announcement/log recording is implicit in `orchestrator.py`'s REVEAL message (every barrier placement is revealed, never silent) | `tests/unit/test_board.py`, `tests/unit/test_orchestrator.py` | Implemented | architecture.md §6 |
 | FR-017 | `domain/board.py` | `tests/unit/test_board.py` | Tested | " |
 | FR-018 | `domain/board.py` | `tests/unit/test_board.py` | Tested | requirements_analysis.md §2, assumptions.md A-013 |
 | FR-020 | `domain/scoring.py`, `domain/models.py` | `tests/unit/test_scoring.py` | Tested | assumptions.md A-001 |
@@ -31,15 +31,15 @@ and every entry in `docs/progress.md`.
 | FR-033 | `strategy/qlearning.py` (optional) | — | Planned (bonus) | " |
 | FR-040 | `domain/crypto.py` | `tests/unit/test_crypto.py` | Tested | protocol.md §3 |
 | FR-041 | `domain/crypto.py` | `tests/unit/test_crypto.py` | Tested | " |
-| FR-042 | `orchestrator.py` (Part 9), `domain/crypto.py` | `tests/protocol/` (Part 8/9) | Implemented (crypto primitives) / Planned (message sequencing) | protocol.md §3 |
-| FR-043 | `domain/crypto.py`; DQ wiring in `orchestrator.py` | `tests/unit/test_crypto.py` | Tested (crypto) / Planned (end-to-end) | " |
+| FR-042 | `orchestrator.py` (produce_commit/produce_reveal/confirm_reveal_accepted) | `tests/unit/test_orchestrator.py`, `tests/integration/test_two_peer_game.py` | Tested | protocol.md §3 |
+| FR-043 | `domain/crypto.py`; DQ wiring in `orchestrator.py::_fail` | `tests/unit/test_crypto.py`, `tests/unit/test_orchestrator.py` | Tested | " |
 | FR-044 | `orchestrator.py` | `tests/integration/test_orchestrator.py` | Planned | " |
 | FR-045 | `gui/replay_viewer.py` | `tests/unit/test_replay_viewer.py` | Planned | architecture.md §7 |
 | FR-050 | `infra/mcp_server.py` (build_server/submit_message), `infra/mcp_client.py` (MCPPeerClient) | `tests/network/test_mcp_transport.py` | Tested | protocol.md §1 |
 | FR-051 | `infra/mcp_server.py` (schema validation + sequence tracking; signature verification wiring is Part 9) | `tests/network/test_mcp_transport.py` | Implemented (schema/sequence) / Planned (signature check) | " |
-| FR-052 | `domain/state_machine.py`; wired into `orchestrator.py` (Part 9) | `tests/unit/test_state_machine.py` | Tested (state machine) / Planned (orchestrator wiring) | architecture.md §5 |
-| FR-053 | `orchestrator.py` (Deadline Tracker) | `tests/network/test_timeout.py` | Planned | architecture.md §7 |
-| FR-054 | `infra/watchdog.py` | `tests/integration/test_orchestrator.py` | Planned | " |
+| FR-052 | `domain/state_machine.py`; wired into `orchestrator.py` | `tests/unit/test_state_machine.py`, `tests/unit/test_orchestrator.py` | Tested | architecture.md §5 |
+| FR-053 | `infra/mcp_client.py` (MCPPeerClient timeout+retry) | `tests/network/test_mcp_transport.py::test_unreachable_peer_raises_after_retries` | Tested | architecture.md §7 |
+| FR-054 | `infra/watchdog.py` | `tests/unit/test_watchdog.py` | Tested | " |
 | FR-055 | `infra/gatekeeper.py` (TokenBucket/QuotaManager/DOSDetector/Gatekeeper) | `tests/unit/test_gatekeeper.py` | Tested | architecture.md §7 |
 | FR-060 | `strategy/base.py` (BrainBase/ThiefBrain/PoliceBrain, build_belief_view), `strategy/heuristic.py` (default brains) | `tests/unit/test_strategy.py` | Tested | protocol.md §6, assumptions.md A-016 |
 | FR-061 | `strategy/llm_bluff.py` (Part 8) | `tests/unit/test_strategy.py` | Planned | assumptions.md A-005 |
