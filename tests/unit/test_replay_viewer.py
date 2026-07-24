@@ -92,3 +92,28 @@ def test_verify_log_file_detects_a_tampered_log(tmp_path: Path):
     entry["intent"] = "lie"  # tampered after the commitment was made
     path.write_text(json.dumps([entry]), encoding="utf-8")
     assert verify_log_file(path) == "TAMPERED"
+
+
+def test_load_log_rejects_entry_missing_a_required_field(tmp_path: Path):
+    entry = _make_entry()
+    del entry["h_commit"]  # corrupted-but-syntactically-valid-JSON, PRD-0405
+    path = tmp_path / "log.json"
+    path.write_text(json.dumps([entry]), encoding="utf-8")
+    with pytest.raises(ReplayError, match="missing required field"):
+        load_log(path)
+
+
+def test_load_log_rejects_a_non_object_entry(tmp_path: Path):
+    path = tmp_path / "log.json"
+    path.write_text(json.dumps(["not-an-object"]), encoding="utf-8")
+    with pytest.raises(ReplayError, match="not a JSON object"):
+        load_log(path)
+
+
+def test_verify_log_file_raises_cleanly_rather_than_a_raw_keyerror(tmp_path: Path):
+    entry = _make_entry()
+    del entry["move"]
+    path = tmp_path / "log.json"
+    path.write_text(json.dumps([entry]), encoding="utf-8")
+    with pytest.raises(ReplayError):
+        verify_log_file(path)

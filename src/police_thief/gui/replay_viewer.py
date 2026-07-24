@@ -60,7 +60,16 @@ def replay(log: list[LogEntryDict]) -> str:
     return "Verified OK"
 
 
+_REQUIRED_ENTRY_KEYS = ("turn_number", "role", "state_hash", "move", "intent", "h_commit")
+
+
 def load_log(path: Path) -> list[LogEntryDict]:
+    """Load and structurally validate a log file. A syntactically valid JSON
+    array whose entries are missing required keys (a corrupted-but-not-
+    tampered file, PRD-0405) is rejected here with a clear, entry-indexed
+    :class:`ReplayError` rather than surfacing as a raw ``KeyError`` deep
+    inside :func:`verify_step`.
+    """
     if not path.exists():
         raise ReplayError(f"log file not found: {path}")
     try:
@@ -69,6 +78,14 @@ def load_log(path: Path) -> list[LogEntryDict]:
         raise ReplayError(f"log file is not valid JSON: {path}: {exc}") from exc
     if not isinstance(data, list):
         raise ReplayError(f"log file must contain a JSON array of turn entries: {path}")
+    for index, entry in enumerate(data):
+        if not isinstance(entry, dict):
+            raise ReplayError(f"log entry {index} in {path} is not a JSON object: {entry!r}")
+        missing = [key for key in _REQUIRED_ENTRY_KEYS if key not in entry]
+        if missing:
+            raise ReplayError(
+                f"log entry {index} in {path} is missing required field(s): {missing}"
+            )
     return data
 
 

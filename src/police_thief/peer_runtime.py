@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import socket
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -39,6 +40,30 @@ logger = get_logger("peer_runtime")
 
 class PeerRuntimeError(Exception):
     """Raised for any startup/config problem — never a bare traceback."""
+
+
+def _check_port_available(host: str, port: int) -> None:
+    """Proactively probe the port before handing it to uvicorn/FastMCP.
+
+    Necessary because uvicorn's own bind-failure path calls ``sys.exit()``
+    from inside the server task rather than raising a normal exception --
+    asyncio special-cases ``SystemExit``/``KeyboardInterrupt`` raised inside
+    a task by re-raising them immediately out of the event loop's own
+    dispatch step, which bypasses the task's stored exception entirely and
+    would otherwise crash ``run_peer`` with a confusing, unhandled
+    ``SystemExit: 3`` instead of a clear :class:`PeerRuntimeError`
+    (PRD-0582).
+    """
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        probe.bind((host, port))
+    except OSError as exc:
+        raise PeerRuntimeError(
+            f"cannot start the FastMCP server on port {port} "
+            f"(is another process already using it?): {exc}"
+        ) from exc
+    finally:
+        probe.close()
 
 
 def _default_brain(role: Role) -> BrainBase:
@@ -114,11 +139,25 @@ async def run_peer(
         board=BoardState.initial(game_config),
         brain=brain,
     )
+    _check_port_available("0.0.0.0", peer_config.network.my_port)
     server = build_server(f"{role.value}-peer", orch.handle_message)
     server_task = asyncio.create_task(
         server.run_http_async(host="0.0.0.0", port=peer_config.network.my_port, show_banner=False)
     )
     await asyncio.sleep(0.3)  # let the server bind before we start dialing out
+    if server_task.done():
+        # A bind failure (e.g. port already in use by another peer process
+        # on the same machine, PRD-0582) raises inside the task rather than
+        # here; surface it now with a clear, actionable message instead of
+        # silently continuing to dial out against a server that never bound.
+        bind_exc = server_task.exception()
+        detail = (
+            f": {bind_exc}" if bind_exc is not None else " (it exited immediately without raising)"
+        )
+        raise PeerRuntimeError(
+            f"the FastMCP server failed to start on port {peer_config.network.my_port} "
+            f"(is another process already using it?){detail}"
+        ) from bind_exc
 
     tunnel = None
     try:
