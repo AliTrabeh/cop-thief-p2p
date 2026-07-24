@@ -67,7 +67,8 @@ and every entry in `docs/progress.md`.
 | NFR-007 | Step-0 declaration JSON emitter | manual + schema test | Planned | assumptions.md A-007 |
 | NFR-008 | `config.py::shared_config_hash` | `tests/unit/test_config.py` | Tested | protocol.md §5 |
 | PROTO-001..004 | `config.py` (schema_version), `domain/crypto.py` (canonical JSON), `infra/protocol.py` (ProtocolMessage/ProtocolResponse), `infra/mcp_server.py` (tool surface + sequencing) | `tests/network/test_mcp_transport.py` | Tested | protocol.md |
-| TEST-001..007 | see testing_strategy.md | themselves | Planned | testing_strategy.md |
+| TEST-001..006 | see testing_strategy.md | themselves | Tested | testing_strategy.md |
+| TEST-007 | `tests/e2e/test_two_peer_local_game.py` (real two-OS-process game via `python -m police_thief peer`) | itself | Tested | testing_strategy.md |
 | DOC-001..005 | `README.md`, `docs/*` | manual review | Planned | this repo |
 | BONUS-001 | `strategy/qlearning.py` | optional | Not started | requirements_analysis.md §14 |
 | BONUS-002 | `strategy/llm_bluff.py` claude_* providers | optional, disabled by default | Not started | assumptions.md A-005 |

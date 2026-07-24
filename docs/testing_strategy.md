@@ -92,6 +92,7 @@ uv run ruff check .
 uv run mypy src
 uv run pytest -v
 uv run pytest --cov=src --cov-report=term-missing
-uv run pytest tests/e2e -v          # slower, spawns real subprocesses
+uv run pytest tests/e2e -v          # slower (~65s): spawns two real OS subprocesses over real HTTP
+uv run pytest -m "not e2e" -q       # fast subset, skips the real-process test
 uv run python -m police_thief --help
 ```

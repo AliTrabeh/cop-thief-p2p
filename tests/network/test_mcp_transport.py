@@ -142,3 +142,15 @@ def test_unreachable_peer_raises_after_retries():
     )
     with pytest.raises(PeerUnreachableError):
         asyncio.run(client.send(message))
+
+
+def test_wait_until_reachable_succeeds_immediately_when_server_is_up():
+    server = build_server("ping-peer", _always_accept)
+    client = MCPPeerClient(server)
+    assert asyncio.run(client.wait_until_reachable(max_wait_seconds=5.0, poll_interval=0.1))
+
+
+def test_wait_until_reachable_times_out_for_an_unreachable_peer():
+    client = MCPPeerClient("http://127.0.0.1:1/mcp", timeout_seconds=0.2)
+    reachable = asyncio.run(client.wait_until_reachable(max_wait_seconds=0.3, poll_interval=0.1))
+    assert not reachable

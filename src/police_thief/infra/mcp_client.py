@@ -12,6 +12,7 @@ socket, which is both real and CI-safe).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import Any
 
 from fastmcp import Client, FastMCP
@@ -61,3 +62,25 @@ class MCPPeerClient:
         raise PeerUnreachableError(
             f"opponent unreachable after {self._max_retries} retries"
         ) from last_exc
+
+    async def wait_until_reachable(
+        self, max_wait_seconds: float = 60.0, poll_interval: float = 1.0
+    ) -> bool:
+        """Poll the opponent with a lightweight ``ping`` (no game semantics)
+        until it answers or ``max_wait_seconds`` elapses.
+
+        Two independently-started peer processes (Part 16's two-terminal
+        demo) don't launch at exactly the same instant; without this
+        handshake, the first mover's in-game retry budget (a handful of
+        attempts meant for *mid-game* hiccups) can exhaust itself waiting
+        for the opponent's server to even finish binding its port.
+        """
+        waited = 0.0
+        while waited < max_wait_seconds:
+            with contextlib.suppress(Exception):  # not up yet; keep polling
+                async with Client(self._transport, timeout=self._timeout) as client:
+                    if await client.ping():
+                        return True
+            await asyncio.sleep(poll_interval)
+            waited += poll_interval
+        return False

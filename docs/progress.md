@@ -302,6 +302,61 @@ CLI loop, which doesn't exist yet. CLI `peer`/`replay` subcommands still raise
 config + Orchestrator + FastMCP + reporting together), then the Tkinter live GUI, then demo
 scripts and documentation.
 
+## 2026-07-24 — Part 16: CLI wiring, peer runtime, real two-process demo, e2e test
+
+**Files changed**: `src/police_thief/cli.py` (`peer`/`replay` subcommands fully wired, no more
+`NotImplementedError`), `src/police_thief/peer_runtime.py` (new — loads config, resolves the
+strategy brain, runs the FastMCP HTTP server, drives the turn loop via `board.moves_made % 2`
+parity polling per assumptions.md A-017, writes deliverables + Gmail report at game end),
+`src/police_thief/infra/mcp_client.py` (`MCPPeerClient.wait_until_reachable` — a ping-based
+handshake wait), `config/game.json` + `config/police/game.toml` + `config/thief/game.toml` (real
+config files, not just fixtures), `tests/e2e/test_two_peer_local_game.py` (spawns two real OS
+subprocesses), `scripts/run_police.ps1`, `scripts/run_thief.ps1`, `scripts/run_demo.ps1`,
+`scripts/run_tests.ps1`.
+
+**Requirements completed**: FR-006 (tunneling not yet added, but real HTTP peer processes work),
+TEST-007 (Tested), working-instructions "CLI and usability" + "Demo support" sections.
+
+**Two real bugs found and fixed via manual + automated real-process testing** (not caught by the
+in-process integration tests, which is exactly why a real-process test is required):
+1. The first mover's connection-retry budget (a few attempts meant for *mid-game* hiccups) was
+   being exhausted before the opponent's process had even finished starting its server, when two
+   independently-launched processes don't start at exactly the same instant. Fixed by adding
+   `MCPPeerClient.wait_until_reachable()` — a patient `ping()`-based handshake wait before the
+   turn loop begins, decoupled from the in-game retry policy.
+2. My own e2e test harness (not product code) deadlocked: calling `.communicate(timeout=60)`
+   sequentially on two concurrently-running subprocesses can hang if the second process's own
+   stdout PIPE buffer fills before anyone drains it. Fixed by redirecting each subprocess's output
+   to its own file instead of a PIPE.
+3. (Observed, not a bug) real HTTP transport opens a fresh MCP client session per message
+   (init/notify/SSE/close) rather than reusing a connection, so a real two-process game takes
+   several seconds per turn under load — much slower than the in-process integration tests. The
+   e2e test's timeout was sized generously (240s) to account for this; a connection-reuse
+   optimization is a documented future improvement, not required for correctness.
+
+**Manual verification**: ran two real `python -m police_thief peer` processes against each other
+directly (not through pytest) twice; both times the game completed with both sides' independently
+reported results agreeing exactly (outcome, moves, final positions), all four JSON deliverables
+were written, the Gmail draft-mode report was written to disk (no real API call), and
+`python -m police_thief replay --log <the produced log>` printed `Verified OK`.
+
+**Tests executed**: `uv run pytest -q` (138 tests, whole suite including e2e, ~74s);
+`uv run pytest --cov=src --cov-report=term-missing -m "not e2e" -q` (82% overall coverage on the
+fast subset; domain package 91-100% per module, well above the 85% target — `cli.py`/
+`peer_runtime.py` show 0% only because their coverage comes exclusively from the e2e test,
+excluded from that particular run). `ruff format`/`ruff check` clean; `mypy src` clean (27 source
+files).
+
+**Test results**: 138/138 passed.
+
+**Remaining issues**: `gui/live_view.py` (Tkinter live belief-heatmap GUI + screenshot deliverable)
+still not started; tunneling (ngrok/Localtonet) for cross-machine play isn't wired (today's demo is
+localhost-only, which is sufficient for the local two-terminal demo requirement but not for playing
+a real remote rival). README.md academic report and Mermaid diagram copies, `docs/final_audit.md`,
+and the two-repo submission split (A-008) are still pending.
+
+**Next part**: `gui/live_view.py` (Tkinter, local-truth-only), then README.md + final audit.
+
 ## 2026-07-24 — Part 10 (Gatekeeper) done early, out of order
 
 **Files changed**: `src/police_thief/infra/gatekeeper.py` (`TokenBucket`, `QuotaManager`,

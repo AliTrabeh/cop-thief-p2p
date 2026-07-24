@@ -1,0 +1,27 @@
+version = "1.10"
+
+[game]
+group_name = "My-Team"
+group_id   = "my-team"
+sub_game_number = 1
+members = ["id-1001"]
+repos = { cop = "https://github.com/AliTrabeh/cop-thief-p2p", thief = "https://github.com/AliTrabeh/cop-thief-p2p" }
+
+[network]
+my_port = 8802
+opponent_url = "http://127.0.0.1:8801/mcp"
+turn_timeout_seconds = 180
+
+# [strategy]  -- optional: point at your own brain subclass (else the shipped heuristic runs)
+# thief_class = "my_team.strategy:MyThiefBrain"
+
+# [trash_talk]  -- optional: HOW the banter is produced. The MOVE is always pure Python.
+# provider = "template"    # template (0 tokens, default) | ollama | claude_api | claude_cli
+
+[llm]
+model = "template"                 # this project's default -- see docs/assumptions.md A-005
+step_deadline_seconds = 30
+
+[email]
+recipient = "rmisegal+uoh26finalgame@gmail.com"
+mode = "draft"                      # "draft" while developing; "send" for a real league match

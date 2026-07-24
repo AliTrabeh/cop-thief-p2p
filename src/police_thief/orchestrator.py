@@ -134,6 +134,14 @@ class Orchestrator:
         self._fail(f"opponent rejected our commit: {response.reason}", disqualified=self.role)
         self._pending = None
 
+    def mark_opponent_unresponsive(self, waited_seconds: float) -> None:
+        """Called by the peer runtime (Part 16) when the opponent hasn't
+        moved within the local wait budget (Deadline Tracker, FR-053) — a
+        connectivity failure, not a rules violation, so no side is recorded
+        as the disqualified party.
+        """
+        self._fail(f"opponent unresponsive after {waited_seconds:.0f}s", disqualified=None)
+
     # -- own turn: WAITING_FOR_OPPONENT -> COMPUTING_MOVE -> COMMITTING ----
 
     def produce_commit(self) -> ProtocolMessage:
