@@ -2,7 +2,7 @@
 # Run this in its own terminal window; run scripts/run_thief.ps1 in another.
 param(
     [string]$GameId = "local-demo",
-    [string]$OutputDir = "logs/$GameId",
+    [string]$OutputDir = "logs/$GameId/police",
     [double]$MaxWaitSeconds = 60
 )
 
