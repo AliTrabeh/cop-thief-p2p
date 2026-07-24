@@ -97,6 +97,7 @@ class Orchestrator:
     own_log: list[LogEntry] = field(default_factory=list)
     opponent_log: list[LogEntry] = field(default_factory=list)
     technical_loss_reason: str | None = field(default=None, init=False)
+    technical_loss_role: Role | None = field(default=None, init=False)
     opponent_scent: ScentField = field(init=False)
     _pending: _PendingOwnTurn | None = field(default=None, init=False, repr=False)
     _pending_opponent_commit: str = field(default="", init=False, repr=False)
@@ -108,7 +109,7 @@ class Orchestrator:
     def is_over(self) -> bool:
         return self.board.outcome is not Outcome.ONGOING or self.technical_loss_reason is not None
 
-    def _fail(self, reason: str) -> None:
+    def _fail(self, reason: str, disqualified: Role | None = None) -> None:
         """Record a disqualifying violation. ``technical_loss_reason``/
         ``is_over`` are the authoritative "is this game over" signal — the
         phase machine only visits TECHNICAL_LOSS from an active-mover state
@@ -116,13 +117,22 @@ class Orchestrator:
         exactly); a violation detected while merely receiving the opponent's
         message (still WAITING_FOR_OPPONENT) still ends the game via
         ``technical_loss_reason``, without forcing an off-diagram transition
-        (assumptions.md A-017).
+        (assumptions.md A-017). ``disqualified`` records which role's action
+        caused the violation, used by reporting (FR-021/assumptions.md A-014).
         """
         self.technical_loss_reason = reason
+        self.technical_loss_role = disqualified
         if self.phase.is_terminal:
             return
         with contextlib.suppress(IllegalTransitionError):
             self.phase.transition(GamePhase.TECHNICAL_LOSS)
+
+    def reject_own_commit(self, response: ProtocolResponse) -> None:
+        """Called by the peer runtime if the opponent's ACK to our own
+        COMMIT is rejected (before we ever reach :meth:`produce_reveal`).
+        """
+        self._fail(f"opponent rejected our commit: {response.reason}", disqualified=self.role)
+        self._pending = None
 
     # -- own turn: WAITING_FOR_OPPONENT -> COMPUTING_MOVE -> COMMITTING ----
 
@@ -174,7 +184,7 @@ class Orchestrator:
         if self._pending is None:
             raise TechnicalLossError("confirm_reveal_accepted() with no pending turn")
         if not response.accepted:
-            self._fail(f"opponent rejected our reveal: {response.reason}")
+            self._fail(f"opponent rejected our reveal: {response.reason}", disqualified=self.role)
             return
         self.phase.transition(GamePhase.VERIFYING)
         action = self._pending.action
@@ -184,7 +194,10 @@ class Orchestrator:
             else:
                 self.board.place_barrier(action.coord)
         except IllegalActionError as exc:
-            self._fail(f"own action became illegal before it could be applied: {exc}")
+            self._fail(
+                f"own action became illegal before it could be applied: {exc}",
+                disqualified=self.role,
+            )
             return
         self.own_log.append(self._pending.entry)
         self._pending = None
@@ -279,7 +292,7 @@ class Orchestrator:
             else:
                 return ProtocolResponse(accepted=False, reason=RejectReason.MALFORMED)
         except IllegalActionError:
-            self._fail("opponent's revealed move was illegal")
+            self._fail("opponent's revealed move was illegal", disqualified=opponent_role)
             return ProtocolResponse(accepted=False, reason=RejectReason.ILLEGAL_MOVE)
 
         self.opponent_log.append(

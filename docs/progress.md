@@ -267,6 +267,41 @@ still raise `NotImplementedError`.
 (wires config loading + Orchestrator + FastMCP transport into a real runnable process), then the
 Tkinter live GUI, then Gmail reporting.
 
+## 2026-07-24 — Reporting deliverables, Gmail automation, structured logging
+
+**Files changed**: `src/police_thief/infra/reporting.py` (`build_declaration`/
+`build_config_snapshot`/`build_result`/`write_match_deliverables` — the four mandatory per-match
+JSON files, Appendix F Table 20), `src/police_thief/infra/gmail_report.py` (OAuth2 send-only Gmail
+flow, Gatekeeper-guarded, `draft`/`send` mode split so no test or default demo run ever touches a
+real mailbox), `src/police_thief/logging_setup.py` (structured logging + secrets/nonce redaction
+filter), `tests/unit/test_reporting.py`, `tests/unit/test_gmail_report.py`, `tests/unit/
+test_logging_setup.py`. Also added `Orchestrator.technical_loss_role` (which side's action caused
+a disqualification) and `reject_own_commit`, needed by `build_result` to score technical losses
+correctly per assumptions.md A-014.
+
+**Requirements completed**: FR-080, FR-081, FR-082 (all Tested), NFR-004 (Tested).
+
+**Tests executed**: `uv run pytest -q` (135 tests total, whole suite). New: 3 reporting tests
+(capture/technical-loss result JSON shape, all-four-files-written-and-valid-JSON), 5 Gmail tests
+(MIME encoding, a fake-service send round trip, draft mode never calling a service, send mode
+using an injected service, send mode correctly blocked once the Gatekeeper's token bucket is
+drained), 5 logging tests (credentials/token filename redaction, nonce-in-JSON redaction,
+unrelated messages untouched, logger namespacing), plus 2 new orchestrator tests for
+`technical_loss_role` attribution and `reject_own_commit`. Added a `[[tool.mypy.overrides]]` for
+the untyped `googleapiclient`/`google.oauth2`/`google.auth` packages (no py.typed marker
+upstream). `ruff format`/`ruff check` clean; `mypy src` clean (26 source files).
+
+**Test results**: 135/135 passed.
+
+**Remaining issues**: FR-083 (mutual daily-log audit / games-played-count verification) is a
+league-level, multi-game-series concern not yet wired — it depends on Part 16's actual multi-game
+CLI loop, which doesn't exist yet. CLI `peer`/`replay` subcommands still raise
+`NotImplementedError`; `gui/live_view.py` hasn't been started.
+
+**Next part**: CLI wiring (`replay` first, then `peer` via a new `peer_runtime.py` module tying
+config + Orchestrator + FastMCP + reporting together), then the Tkinter live GUI, then demo
+scripts and documentation.
+
 ## 2026-07-24 — Part 10 (Gatekeeper) done early, out of order
 
 **Files changed**: `src/police_thief/infra/gatekeeper.py` (`TokenBucket`, `QuotaManager`,

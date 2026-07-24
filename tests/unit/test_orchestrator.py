@@ -59,6 +59,7 @@ def test_confirm_reveal_rejected_causes_technical_loss(game_config):
     orch.confirm_reveal_accepted(ProtocolResponse(accepted=False, reason=RejectReason.ILLEGAL_MOVE))
     assert orch.phase.state is GamePhase.TECHNICAL_LOSS
     assert orch.technical_loss_reason is not None
+    assert orch.technical_loss_role is Role.POLICE  # we (police) are the disqualified side here
     assert orch.is_over
 
 
@@ -113,6 +114,7 @@ def test_receive_reveal_with_illegal_move_causes_technical_loss(game_config):
     assert not response.accepted
     assert response.reason is RejectReason.ILLEGAL_MOVE
     assert orch.is_over
+    assert orch.technical_loss_role is Role.THIEF  # the opponent, not us, is disqualified
 
 
 def test_receive_reveal_malformed_move_is_rejected(game_config):
@@ -140,3 +142,11 @@ def test_repeated_full_turn_cycle_advances_turn_number(game_config):
         orch.confirm_reveal_accepted(ProtocolResponse(accepted=True))
     assert orch.turn_number == 3
     assert len(orch.own_log) == 3
+
+
+def test_reject_own_commit_causes_technical_loss(game_config):
+    orch = make_orchestrator(game_config, Role.POLICE)
+    orch.produce_commit()
+    orch.reject_own_commit(ProtocolResponse(accepted=False, reason=RejectReason.STALE_TURN))
+    assert orch.is_over
+    assert orch.technical_loss_role is Role.POLICE

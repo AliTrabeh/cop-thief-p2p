@@ -49,10 +49,10 @@ and every entry in `docs/progress.md`.
 | FR-070 | `gui/live_view.py` | `tests/unit/test_live_view_render.py` | Planned | architecture.md §1 |
 | FR-071 | `gui/replay_viewer.py` (verify_step/replay/load_log/verify_log_file) | `tests/unit/test_replay_viewer.py`, `tests/integration/test_two_peer_game.py` | Tested | " |
 | FR-072 | `gui/live_view.py` (Planned); `gui/replay_viewer.py` (verification logic Tested, screenshot still manual) | manual screenshot pending | Planned | docs/final_audit.md (future) |
-| FR-080 | `infra/gmail_report.py` | `tests/unit/test_gmail_report.py` | Planned | protocol.md §7 |
-| FR-081 | `infra/gmail_report.py` | `tests/unit/test_gmail_report.py` | Planned | " |
-| FR-082 | `infra/gmail_report.py` | `tests/unit/test_gmail_report.py` | Planned | " |
-| FR-083 | `orchestrator.py`, `infra/gmail_report.py` | `tests/integration/` | Planned | " |
+| FR-080 | `infra/gmail_report.py` (send-only scope, Gatekeeper-guarded) | `tests/unit/test_gmail_report.py` | Tested | protocol.md §7 |
+| FR-081 | `infra/gmail_report.py::report_match_result`, `infra/reporting.py::build_result` | `tests/unit/test_gmail_report.py`, `tests/unit/test_reporting.py` | Tested | " |
+| FR-082 | `infra/reporting.py` (all four deliverable files) | `tests/unit/test_reporting.py` | Tested | " |
+| FR-083 | daily-log audit / games-played verification not yet wired | — | Planned | " |
 | FR-084 | `config.py` | `tests/unit/test_config.py` | Planned | assumptions.md A-002/A-004 |
 | FR-085 | `.gitignore` | manual review | Implemented | docs/final_audit.md (future) |
 | FR-086 | repo/tag process | manual | Planned | implementation_plan.md Part 18 |
@@ -61,7 +61,7 @@ and every entry in `docs/progress.md`.
 | NFR-001 | package boundaries (`domain/` has no I/O imports) | manual review (no lint rule yet) + `tests/unit/*` all run without sockets/GUI | Implemented | architecture.md §1 |
 | NFR-002 | `pathlib` usage throughout | manual review + CI on Windows | Planned | — |
 | NFR-003 | `orchestrator.py` shutdown path | `tests/network/test_shutdown.py` | Planned | architecture.md §6 |
-| NFR-004 | `logging_setup.py` | `tests/unit/test_logging_redaction.py` | Planned | testing_strategy.md §1 |
+| NFR-004 | `logging_setup.py` (RedactionFilter, configure_logging/get_logger) | `tests/unit/test_logging_setup.py` | Tested | testing_strategy.md §1 |
 | NFR-005 | `config.py` (`load_game_config`/`load_peer_config`) | `tests/unit/test_config.py` | Tested | protocol.md §5/§6 |
 | NFR-006 | `infra/gatekeeper.py`, `infra/mcp_server.py` (oversized-payload guard) | `tests/unit/test_gatekeeper.py`, `tests/network/test_mcp_transport.py` | Tested | architecture.md §7 |
 | NFR-007 | Step-0 declaration JSON emitter | manual + schema test | Planned | assumptions.md A-007 |
