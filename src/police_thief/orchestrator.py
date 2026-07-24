@@ -10,6 +10,7 @@ Per-turn state-machine mapping and turn order: see docs/assumptions.md A-017.
 from __future__ import annotations
 
 import contextlib
+import json
 from dataclasses import dataclass, field
 
 from police_thief.domain.board import BoardState, IllegalActionError, Outcome
@@ -199,7 +200,61 @@ class Orchestrator:
             return self._receive_commit(message)
         if message.message_type is MessageType.REVEAL:
             return self._receive_reveal(message)
+        if message.message_type is MessageType.FINAL_REVEAL:
+            return self._receive_final_reveal(message)
         return ProtocolResponse(accepted=False, reason=RejectReason.MALFORMED)
+
+    def produce_final_reveal(self) -> ProtocolMessage:
+        """End-of-game: reveal every nonce this side ever committed (§5.3.2
+        step 4), so the opponent (and the standalone Replay Viewer, Part 13)
+        can independently recompute and verify every commitment hash.
+        """
+        payload = {
+            str(entry.turn_number): json.dumps(
+                {"state_hash": entry.state_hash, "nonce": entry.nonce}
+            )
+            for entry in self.own_log
+        }
+        return ProtocolMessage(
+            message_type=MessageType.FINAL_REVEAL,
+            game_id=self.game_id,
+            turn_number=self.turn_number,
+            sender_role=self.role,
+            payload=payload,
+        )
+
+    def _receive_final_reveal(self, message: ProtocolMessage) -> ProtocolResponse:
+        """Fill in the opponent's ``state_hash``/``nonce`` for every turn we
+        already recorded, so :meth:`export_log` can produce a fully
+        verifiable record (FR-045, §5.4 mutual audit).
+        """
+        for entry in self.opponent_log:
+            key = str(entry.turn_number)
+            if key not in message.payload:
+                continue
+            data = json.loads(message.payload[key])
+            entry.state_hash = data["state_hash"]
+            entry.nonce = data["nonce"]
+        return ProtocolResponse(accepted=True)
+
+    def export_log(self) -> list[dict[str, object]]:
+        """Merge our own and the opponent's log entries, sorted by turn, in
+        the shape the Replay Viewer (Part 13) expects.
+        """
+        combined = [*self.own_log, *self.opponent_log]
+        combined.sort(key=lambda e: (e.turn_number, e.role.value))
+        return [
+            {
+                "turn_number": e.turn_number,
+                "role": e.role.value,
+                "state_hash": e.state_hash,
+                "move": e.move,
+                "intent": e.intent,
+                "h_commit": e.h_commit,
+                "nonce": e.nonce,
+            }
+            for e in combined
+        ]
 
     def _receive_commit(self, message: ProtocolMessage) -> ProtocolResponse:
         """Record the opponent's commitment hash for the end-of-game audit;

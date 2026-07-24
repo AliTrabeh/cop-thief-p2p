@@ -20,6 +20,7 @@ from police_thief.domain.models import (
     Role,
 )
 from police_thief.domain.scoring import score
+from police_thief.gui.replay_viewer import replay
 from police_thief.infra.mcp_client import MCPPeerClient
 from police_thief.infra.mcp_server import build_server
 from police_thief.orchestrator import Orchestrator
@@ -85,6 +86,12 @@ async def _run_full_game(max_iterations: int = 100) -> tuple[Orchestrator, Orche
         await _play_one_turn(mover, client)
         if police.board.outcome is not Outcome.ONGOING:
             break
+
+    # End-of-game mutual audit (FR-045, §5.4): both sides reveal every nonce.
+    police_final = police.produce_final_reveal()
+    thief_final = thief.produce_final_reveal()
+    await police_to_thief.send(police_final)
+    await thief_to_police.send(thief_final)
     return police, thief
 
 
@@ -147,3 +154,20 @@ def test_capture_is_detected_symmetrically_by_both_sides():
     asyncio.run(one_cop_turn())
     assert police.board.outcome is Outcome.CAPTURE
     assert thief.board.outcome is Outcome.CAPTURE
+
+
+def test_full_game_log_is_verified_ok_after_the_mutual_audit():
+    police, thief = asyncio.run(_run_full_game())
+
+    police_log = police.export_log()
+    thief_log = thief.export_log()
+    assert police_log == thief_log  # both sides independently agree on the full record
+    assert replay(police_log) == "Verified OK"
+
+
+def test_full_game_log_is_flagged_tampered_after_the_fact():
+    police, _thief = asyncio.run(_run_full_game())
+    log = police.export_log()
+    assert log, "expected at least one turn to have been played"
+    log[0]["move"] = "MOVE:S" if log[0]["move"] != "MOVE:S" else "MOVE:N"
+    assert replay(log) == "TAMPERED"

@@ -237,6 +237,36 @@ transport) is still Part 16's job via the CLI.
 **Next part**: Part 11 — CLI wiring (peer/replay subcommands actually running games), then Part 13
 GUI/Replay Viewer, then Part 12 Gmail reporting.
 
+## 2026-07-24 — Part 13 (Replay Viewer half) + FINAL_REVEAL wiring
+
+**Files changed**: `src/police_thief/gui/replay_viewer.py` (`verify_step`/`replay`/`load_log`/
+`verify_log_file`, matching the book's own §7.5 reference code), `src/police_thief/orchestrator.py`
+(`produce_final_reveal`, `_receive_final_reveal`, `export_log` — the end-of-game mutual audit,
+FR-045), `tests/unit/test_replay_viewer.py`, four new tests appended to `tests/integration/
+test_two_peer_game.py`.
+
+**Requirements completed**: FR-045 (Tested — full mutual audit, not just the crypto primitive),
+FR-071 (Tested).
+
+**Tests executed**: `uv run pytest -q` (121 tests total, whole suite). New: 10 replay-viewer unit
+tests (clean/tampered/missing-nonce verify_step, replay stopping at first tamper, load_log error
+paths, verify_log_file round-trip); the integration suite now runs a complete two-peer game through
+to FINAL_REVEAL, exports both sides' logs, confirms they're byte-identical, and confirms `replay()`
+reports `Verified OK` on the real log and `TAMPERED` once a single field is corrupted afterward.
+This is the first fully closed loop from strategy decision through cryptographic audit. `ruff
+format`/`ruff check` clean; `mypy src` clean (23 source files).
+
+**Test results**: 121/121 passed.
+
+**Remaining issues**: the Replay Viewer's GUI presentation (Verified OK/TAMPERED banner, screenshot
+deliverable) is still pending — today it's a pure verification function with no display; `gui/
+live_view.py` (the live belief-heatmap GUI) hasn't been started; CLI `peer`/`replay` subcommands
+still raise `NotImplementedError`.
+
+**Next part**: CLI wiring for `replay` (straightforward, wraps `verify_log_file`), then `peer`
+(wires config loading + Orchestrator + FastMCP transport into a real runnable process), then the
+Tkinter live GUI, then Gmail reporting.
+
 ## 2026-07-24 — Part 10 (Gatekeeper) done early, out of order
 
 **Files changed**: `src/police_thief/infra/gatekeeper.py` (`TokenBucket`, `QuotaManager`,

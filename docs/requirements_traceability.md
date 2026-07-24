@@ -34,7 +34,7 @@ and every entry in `docs/progress.md`.
 | FR-042 | `orchestrator.py` (produce_commit/produce_reveal/confirm_reveal_accepted) | `tests/unit/test_orchestrator.py`, `tests/integration/test_two_peer_game.py` | Tested | protocol.md §3 |
 | FR-043 | `domain/crypto.py`; DQ wiring in `orchestrator.py::_fail` | `tests/unit/test_crypto.py`, `tests/unit/test_orchestrator.py` | Tested | " |
 | FR-044 | `orchestrator.py` | `tests/integration/test_orchestrator.py` | Planned | " |
-| FR-045 | `gui/replay_viewer.py` | `tests/unit/test_replay_viewer.py` | Planned | architecture.md §7 |
+| FR-045 | `orchestrator.py` (produce_final_reveal/_receive_final_reveal/export_log), `gui/replay_viewer.py` (verify_step/replay) | `tests/unit/test_replay_viewer.py`, `tests/integration/test_two_peer_game.py` | Tested | architecture.md §7 |
 | FR-050 | `infra/mcp_server.py` (build_server/submit_message), `infra/mcp_client.py` (MCPPeerClient) | `tests/network/test_mcp_transport.py` | Tested | protocol.md §1 |
 | FR-051 | `infra/mcp_server.py` (schema validation + sequence tracking; signature verification wiring is Part 9) | `tests/network/test_mcp_transport.py` | Implemented (schema/sequence) / Planned (signature check) | " |
 | FR-052 | `domain/state_machine.py`; wired into `orchestrator.py` | `tests/unit/test_state_machine.py`, `tests/unit/test_orchestrator.py` | Tested | architecture.md §5 |
@@ -47,8 +47,8 @@ and every entry in `docs/progress.md`.
 | FR-063 | `strategy/llm_bluff.py` (Part 8) | — | Planned | " |
 | FR-064 | `domain/models.py::WorldConfig.hint_max_words` | `tests/unit/test_board.py` (config validation) | Implemented | " |
 | FR-070 | `gui/live_view.py` | `tests/unit/test_live_view_render.py` | Planned | architecture.md §1 |
-| FR-071 | `gui/replay_viewer.py` | `tests/unit/test_replay_viewer.py` | Planned | " |
-| FR-072 | `gui/live_view.py`, `gui/replay_viewer.py` | manual screenshot | Planned | docs/final_audit.md (future) |
+| FR-071 | `gui/replay_viewer.py` (verify_step/replay/load_log/verify_log_file) | `tests/unit/test_replay_viewer.py`, `tests/integration/test_two_peer_game.py` | Tested | " |
+| FR-072 | `gui/live_view.py` (Planned); `gui/replay_viewer.py` (verification logic Tested, screenshot still manual) | manual screenshot pending | Planned | docs/final_audit.md (future) |
 | FR-080 | `infra/gmail_report.py` | `tests/unit/test_gmail_report.py` | Planned | protocol.md §7 |
 | FR-081 | `infra/gmail_report.py` | `tests/unit/test_gmail_report.py` | Planned | " |
 | FR-082 | `infra/gmail_report.py` | `tests/unit/test_gmail_report.py` | Planned | " |
