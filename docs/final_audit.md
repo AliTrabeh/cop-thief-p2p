@@ -1,7 +1,8 @@
 # Final Audit
 
-Snapshot as of 2026-07-24, commit range covering Parts 1–13 (see `docs/progress.md` for the full
-dated history). This audit follows the 20-point checklist from the working instructions.
+Snapshot as of 2026-07-24, updated after a second implementation pass that closed FR-083, FR-087,
+and both bonus AI brains (see `docs/progress.md` for the full dated history). This audit follows
+the 20-point checklist from the working instructions.
 
 ## 1. Requirement coverage
 
@@ -10,26 +11,33 @@ TEST-001..007, DOC-001..005, plus Appendix E items E-1..E-55) is listed in
 `docs/requirements_traceability.md` with a module, a test, and a status. Summary:
 
 - **Tested** (implemented + automated test passes): the large majority — all core game rules,
-  crypto, scent/belief, state machine, strategy, FastMCP transport, tunneling (`infra/tunnel.py`,
-  ngrok automated + fully unit-tested with faked externals), Orchestrator, Gatekeeper, reporting,
-  Gmail (draft-mode), CLI, live-view rendering logic, and the full two-real-process e2e scenario.
+  crypto, scent/belief, state machine, strategy (including both bonus brains: tabular Q-learning in
+  `strategy/qlearning.py` and LLM banter in `strategy/llm_bluff.py`), FastMCP transport, tunneling
+  (`infra/tunnel.py`, ngrok automated + fully unit-tested with faked externals), Orchestrator,
+  Gatekeeper, reporting (real git-commit-hash discovery via `infra/vcs.py`, no manual step), the
+  FR-083 league audit (`infra/league_audit.py`), Gmail (draft-mode), CLI, live-view rendering logic,
+  and the full two-real-process e2e scenario.
 - **Implemented** (working, but not independently unit-tested, or a manual-only artifact): the
   live GUI's actual Tkinter widget (smoke-tested manually, not exercised in CI since it needs a
   display), Step-0 hardware declaration emission, ngrok automation (unit-tested with every external
   dependency faked, but never run against a real `ngrok` binary — none was available in this
   development environment).
-- **Planned** (not yet built): `strategy/llm_bluff.py` (banter provider), the mutual
-  daily-log/games-played-count audit (FR-083, a multi-game-series concern), the two-repo submission
-  split (A-008).
+- **Cut by design** (deliberately not built, not a gap): `claude_api`/`claude_cli` LLM banter
+  providers — `build_banter_provider` raises `NotImplementedError` immediately rather than silently
+  spending real API credits by default (A-005).
+- **Planned** (needs a human, not more code): the mutual cross-team half of the games-played audit
+  (this peer's own side is now automated; comparing against the rival team's logs is inherently
+  out-of-band, same as A-018's tunnel-URL exchange), the two-repo submission split (A-008), the
+  submission screenshots, and a real (non-draft) Gmail send test.
 
 No requirement was silently dropped; every "Planned" row states what's missing and why.
 
 ## 2. Every functional requirement has an implementation
 
 True for all FR-xxx rows marked Tested or Implemented in the traceability matrix. The remaining
-exceptions (LLM banter, multi-game audit, two-repo split) are explicitly called out as Planned,
-with the reasoning in `docs/progress.md`'s per-part entries and `README.md`'s Known Limitations
-section.
+exceptions (the two-repo split, submission screenshots, a real Gmail send) are explicitly called
+out as Planned, with the reasoning in `docs/progress.md`'s per-part entries and `README.md`'s Known
+Limitations section.
 
 ## 3. Every critical requirement has a test
 
@@ -71,9 +79,10 @@ only (not `tests/`) — strict untyped-def checking on test functions isn't a us
 
 ## 9. Tests pass
 
-`uv run pytest -q` — 146 tests, whole suite including the real-two-process e2e test, ~85 seconds,
-all passing (verified multiple times this session, most recently just before this audit was
-written).
+`uv run pytest -q` — 206 tests, whole suite including the real-two-process e2e test (which was
+re-run twice more after touching `peer_runtime.py` in the follow-up hardening pass), all passing
+(verified multiple times across both implementation passes, most recently just before this
+revision was written).
 
 ## 10. Two real peers communicate locally
 
@@ -147,7 +156,8 @@ having to guess why something was built a particular way.
 
 ## 20. The final submission includes all required deliverables
 
-**Not yet complete** — remaining before `v1.0-submission` can be tagged:
+**Not yet complete** — remaining before `v1.0-submission` can be tagged, and every remaining item
+now needs a human decision or real credentials, not more code:
 - Split into two cross-linked GitHub repos, or get lecturer confirmation a single repo is
   acceptable for this submission (A-008).
 - Capture the live-view heatmap screenshot and the Replay-Viewer `Verified OK` screenshot for the
@@ -156,11 +166,13 @@ having to guess why something was built a particular way.
 - Send a real end-of-game report email (currently only exercised in `draft` mode, which is this
   project's deliberate safe default — see `docs/assumptions.md` A-005 for the parallel LLM-cost
   reasoning) to confirm the OAuth2 flow works against a real Google account.
-- Fill in the real GitHub commit hash in the declaration JSON (`peer_runtime.py` currently writes
-  `"unknown"` since the hash of the commit that produced a given run can't be derived from inside
-  the running process itself — this needs to be supplied at submission time per Appendix F's
-  mandatory rule 5).
+- Fill in the real team roster (`group_name`/`group_id`/`members`) in `config/<role>/game.toml`,
+  replacing development placeholders (A-012).
 - Tag `v1.0-submission` once the above are done.
+
+**Resolved since the previous revision of this audit**: the real GitHub commit hash is no longer a
+manual step — `infra/vcs.py::current_commit_hash()` runs `git rev-parse HEAD` at runtime and
+`peer_runtime.py` uses its result directly, satisfying Appendix F's mandatory rule 5 automatically.
 
 ## Exact commands used for this audit
 
@@ -178,8 +190,10 @@ uv run python -m police_thief replay --help
 
 ## Known limitations (repeated from README.md for completeness)
 
-See `README.md` §9. In short: LLM banter provider, the multi-game league audit, and the two-repo
-split are the concrete remaining gaps (tunneling was closed in a later pass — ngrok is now fully
-automated and unit-tested, though not yet run against a real ngrok install or remote rival);
-everything else in the spec that this project claims to implement has a
+See `README.md` §9. In short: the two-repo split, submission screenshots, a real Gmail send test,
+and the real team roster are the concrete remaining gaps, and every one of them needs a human, not
+more code (tunneling was closed in an earlier pass — ngrok is now fully automated and unit-tested,
+though not yet run against a real ngrok install or remote rival; FR-083's league audit and FR-087's
+real commit hash were closed in this pass; both bonus AI brains, RL and LLM banter, are now
+implemented and tested); everything else in the spec that this project claims to implement has a
 passing automated test or a documented manual verification.

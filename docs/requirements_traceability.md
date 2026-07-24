@@ -28,7 +28,7 @@ and every entry in `docs/progress.md`.
 | FR-030 | `domain/scent.py` | `tests/unit/test_scent.py` | Tested | requirements_analysis.md §4, assumptions.md A-015 |
 | FR-031 | `domain/models.py` (PheromoneConfig is fixed-at-parse; no mid-game mutation path exists) | `tests/unit/test_scent.py` | Implemented | " |
 | FR-032 | `domain/scent.py` (belief_map/most_likely_position); `strategy/heuristic.py` (default brains) | `tests/unit/test_scent.py`, `tests/unit/test_strategy.py` | Tested | " |
-| FR-033 | `strategy/qlearning.py` (optional) | — | Planned (bonus) | " |
+| FR-033 | `strategy/qlearning.py` (optional, BONUS-001) | `tests/unit/test_qlearning.py`, `tests/integration/test_qlearning_game.py` | Tested (bonus) | " |
 | FR-040 | `domain/crypto.py` | `tests/unit/test_crypto.py` | Tested | protocol.md §3 |
 | FR-041 | `domain/crypto.py` | `tests/unit/test_crypto.py` | Tested | " |
 | FR-042 | `orchestrator.py` (produce_commit/produce_reveal/confirm_reveal_accepted) | `tests/unit/test_orchestrator.py`, `tests/integration/test_two_peer_game.py` | Tested | protocol.md §3 |
@@ -42,9 +42,9 @@ and every entry in `docs/progress.md`.
 | FR-054 | `infra/watchdog.py` | `tests/unit/test_watchdog.py` | Tested | " |
 | FR-055 | `infra/gatekeeper.py` (TokenBucket/QuotaManager/DOSDetector/Gatekeeper) | `tests/unit/test_gatekeeper.py` | Tested | architecture.md §7 |
 | FR-060 | `strategy/base.py` (BrainBase/ThiefBrain/PoliceBrain, build_belief_view), `strategy/heuristic.py` (default brains) | `tests/unit/test_strategy.py` | Tested | protocol.md §6, assumptions.md A-016 |
-| FR-061 | `strategy/llm_bluff.py` (Part 8) | `tests/unit/test_strategy.py` | Planned | assumptions.md A-005 |
-| FR-062 | `strategy/llm_bluff.py` (Part 8) | — | Planned | " |
-| FR-063 | `strategy/llm_bluff.py` (Part 8) | — | Planned | " |
+| FR-061 | `strategy/llm_bluff.py` (`TemplateBanterProvider`/`OllamaBanterProvider`; move decision is always separate, pure Python) | `tests/unit/test_llm_bluff.py` | Tested | assumptions.md A-005 |
+| FR-062 | `strategy/llm_bluff.py::OllamaBanterProvider` (hard `step_deadline_seconds` timeout, falls back to template on any error) | `tests/unit/test_llm_bluff.py` | Tested | " |
+| FR-063 | `strategy/llm_bluff.py::build_banter_provider` (`claude_api`/`claude_cli` deliberately raise `NotImplementedError` rather than spend by default) | `tests/unit/test_llm_bluff.py` | Tested (template/ollama); Cut by design (claude_api/claude_cli, A-005) | " |
 | FR-064 | `domain/models.py::WorldConfig.hint_max_words` | `tests/unit/test_board.py` (config validation) | Implemented | " |
 | FR-070 | `gui/live_view.py` (render_grid/belief_to_color/turn_banner_*, `LiveView` Tkinter widget), wired via `peer_runtime.py`'s `--gui` flag | `tests/unit/test_live_view_render.py` (render logic); real widget smoke-tested manually (needs a display) | Tested (logic) / Implemented (widget) | architecture.md §1 |
 | FR-071 | `gui/replay_viewer.py` (verify_step/replay/load_log/verify_log_file) | `tests/unit/test_replay_viewer.py`, `tests/integration/test_two_peer_game.py` | Tested | " |
@@ -52,11 +52,11 @@ and every entry in `docs/progress.md`.
 | FR-080 | `infra/gmail_report.py` (send-only scope, Gatekeeper-guarded) | `tests/unit/test_gmail_report.py` | Tested | protocol.md §7 |
 | FR-081 | `infra/gmail_report.py::report_match_result`, `infra/reporting.py::build_result` | `tests/unit/test_gmail_report.py`, `tests/unit/test_reporting.py` | Tested | " |
 | FR-082 | `infra/reporting.py` (all four deliverable files) | `tests/unit/test_reporting.py` | Tested | " |
-| FR-083 | daily-log audit / games-played verification not yet wired | — | Planned | " |
+| FR-083 | `infra/league_audit.py::audit_league_series` (this team's own games-played count vs. `min_games_to_pass`/`max_games_per_team`; a genuinely mutual cross-team audit still needs an out-of-band log comparison, same as A-018's tunnel-URL exchange), `python -m police_thief audit` CLI | `tests/unit/test_league_audit.py` | Tested | " |
 | FR-084 | `domain/models.py::NetworkAndLeagueConfig` (num_games=6, diversity_reward=10, min_games_to_pass=2, max_games_per_team=10, all Fixed per Table 18) | `tests/unit/test_config.py::test_load_game_config_round_trips_the_books_own_example` | Tested | assumptions.md A-002/A-004 |
 | FR-085 | `.gitignore` | manual review | Implemented | docs/final_audit.md §16 |
 | FR-086 | repo/tag process | manual, not yet done | Planned | implementation_plan.md Part 18, docs/final_audit.md §20 |
-| FR-087 | `infra/reporting.py::build_declaration` (writes a `commit_hash` field; `peer_runtime.py` currently passes the placeholder `"unknown"` — the real per-game commit hash must be supplied manually per Appendix F mandatory rule 5, it can't be derived from inside the running process) | `tests/unit/test_reporting.py` | Implemented (placeholder value; real value is a manual per-game step) | docs/final_audit.md §20 |
+| FR-087 | `infra/vcs.py::current_commit_hash` (runs `git rev-parse HEAD` at runtime, degrades to `"unknown"` only if not a git checkout) wired into `infra/reporting.py::build_declaration`'s `commit_hash` field via `peer_runtime.py` — no manual per-game step needed | `tests/unit/test_vcs.py`, `tests/unit/test_reporting.py` | Tested | docs/final_audit.md §20 |
 | FR-088 | `config/<role>/game.toml::PeerGameIdentity` (group_name/group_id/members structure exists; real team roster is user-supplied) | `tests/unit/test_config.py` | Implemented (structure); manual (real roster) | assumptions.md A-012 |
 | NFR-001 | package boundaries (`domain/` has no I/O imports) | manual review (no lint rule yet) + `tests/unit/*` all run without sockets/GUI | Implemented | architecture.md §1 |
 | NFR-002 | `pathlib` used throughout (`config.py`, `cli.py`, `peer_runtime.py`, `reporting.py`, `gui/replay_viewer.py`) | manual review; every test runs on Windows in this session | Implemented | — |
@@ -70,8 +70,8 @@ and every entry in `docs/progress.md`.
 | TEST-001..006 | see testing_strategy.md | themselves | Tested | testing_strategy.md |
 | TEST-007 | `tests/e2e/test_two_peer_local_game.py` (real two-OS-process game via `python -m police_thief peer`) | itself | Tested | testing_strategy.md |
 | DOC-001..005 | `README.md` (academic report), `docs/architecture.md`/`docs/protocol.md` (Mermaid diagrams), `docs/progress.md`, `docs/final_audit.md`, Appendix C Table 6 checklist | manual review | Implemented (DOC-005 submission checklist still has open items — see final_audit.md §20) | this repo |
-| BONUS-001 | `strategy/qlearning.py` | optional | Not started | requirements_analysis.md §14 |
-| BONUS-002 | `strategy/llm_bluff.py` claude_* providers | optional, disabled by default | Not started | assumptions.md A-005 |
+| BONUS-001 | `strategy/qlearning.py` (tabular Q-learning, opt-in via `[strategy]` config, never the default) | `tests/unit/test_qlearning.py`, `tests/integration/test_qlearning_game.py` | Tested (optional) | requirements_analysis.md §14 |
+| BONUS-002 | `strategy/llm_bluff.py` (`template`/`ollama` providers implemented and tested; `claude_api`/`claude_cli` deliberately raise `NotImplementedError`, disabled by design) | `tests/unit/test_llm_bluff.py` | Tested (template/ollama); Cut by design (claude_api/claude_cli) | assumptions.md A-005 |
 
 ## Coverage check
 
@@ -81,7 +81,10 @@ and every entry in `docs/progress.md`.
 - Every Appendix F mandatory-parameters table row is a field in `protocol.md` §5's `game.json`
   schema. ✅
 
-Updated through the tunneling gap-closure pass (2026-07-24, see `docs/progress.md` for the dated
-history of every part). Remaining genuinely open items: `strategy/llm_bluff.py` (FR-061/062/063,
-BONUS-002), FR-083 (multi-game-series log/count audit), FR-086 (git tag) and the two-repo split
-(assumptions.md A-008) — all called out explicitly in `docs/final_audit.md`.
+Updated through the second implementation pass (2026-07-24, see `docs/progress.md` for the dated
+history of every part) that closed the FR-083 audit, the FR-087 real-commit-hash gap, and both
+bonus AI brains (BONUS-001/002 template+ollama). Remaining genuinely open items are now all
+human-only steps, not missing code: FR-086 (git tag `v1.0-submission`, once everything else below
+is resolved), the two-repo split (assumptions.md A-008, needs a decision), a real Gmail send test
+against a live account, real submission screenshots, and the real team roster — all called out
+explicitly in `docs/final_audit.md` and `docs/STATUS.md`.

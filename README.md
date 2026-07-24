@@ -93,10 +93,14 @@ group swap in a smarter cop/thief brain — including an RL-trained one — with
 networking, crypto, or board layers at all.
 
 **LLM usage.** Per the spec's own recommendation, an LLM (if configured at all) is only ever used
-for free-text banter/trash-talk, never for the move decision itself (`strategy/llm_bluff.py` is not
-yet implemented — see Known Limitations). This project's default `[llm].model = "template"` (zero
-tokens, offline) per `docs/assumptions.md` A-005, since the user's standing instructions are to
-avoid consuming Anthropic API credits unless the spec explicitly requires it — it doesn't.
+for free-text banter/trash-talk, never for the move decision itself. `strategy/llm_bluff.py`
+implements two zero-cost providers — `template` (canned phrases, offline, the default) and `ollama`
+(local self-hosted model, no per-token billing) — wired into `peer_runtime.py` so a game logs a
+short in-character line after each own move, entirely outside the commit-reveal protocol. This
+project's default `[llm].model = "template"` per `docs/assumptions.md` A-005, since the user's
+standing instructions are to avoid consuming Anthropic API credits unless the spec explicitly
+requires it — it doesn't; `claude_api`/`claude_cli` are deliberately left unimplemented for the same
+reason (see Known Limitations).
 
 ## 5. Files changed / project structure
 
@@ -166,6 +170,14 @@ uv run python -m police_thief replay --log logs/<game-id>/police/log_<game-id>_g
 ```
 Prints `Verified OK` or `TAMPERED`.
 
+### League audit (FR-083)
+
+```powershell
+uv run python -m police_thief audit --group-id my-team --logs-dir logs --config-dir config
+```
+Scans `logs/` recursively for this team's own `declaration_`/`result_<game_id>.json` pairs and
+reports games played against `min_games_to_pass`/`max_games_per_team` from `config/game.json`.
+
 ### Tests
 
 ```powershell
@@ -185,13 +197,14 @@ uv run python -m police_thief --help
 
 ## 7. Testing strategy summary
 
-146 tests across unit / network / integration / e2e (`docs/testing_strategy.md` for the full
+206 tests across unit / network / integration / e2e (`docs/testing_strategy.md` for the full
 breakdown): deterministic domain logic tested without I/O; FastMCP networking tested over its real
-in-process transport (genuine protocol round trips, no sockets needed in CI); a full two-orchestrator
-game tested over that same real transport through to a cryptographically-verified `Verified OK`
-replay; and an end-to-end test that spawns **two real OS subprocesses** communicating over real
-HTTP, confirming they independently agree on the outcome and produce all four JSON deliverables.
-Domain package coverage is 91–100% per module; overall ~80% (CLI/peer-runtime coverage isn't
+in-process transport (genuine protocol round trips, no sockets needed in CI); two full
+two-orchestrator games (default heuristic brains, and separately the bonus Q-learning brains) tested
+over that same real transport through to a cryptographically-verified `Verified OK` replay; and an
+end-to-end test that spawns **two real OS subprocesses** communicating over real HTTP, confirming
+they independently agree on the outcome and produce all four JSON deliverables.
+Domain package coverage is 91–100% per module; overall ~84% (CLI/peer-runtime coverage isn't
 captured by `coverage.py` across subprocess boundaries without extra plumbing — see
 `docs/testing_strategy.md`).
 
@@ -217,11 +230,19 @@ that are resolved there rather than silently picked one way.
   peer's own port* publicly — the discovered public URL still has to be given to your rival
   out-of-band (chat/email) so they can set it as *their* `opponent_url`; there's no automatic
   exchange of tunnel URLs between peers.
-- **LLM banter provider (`strategy/llm_bluff.py`) is not implemented.** The `[trash_talk]` /
-  `[llm]` config sections exist and default to the zero-cost `template` mode, but no provider code
-  reads them yet — banter is currently a no-op.
+- **`claude_api`/`claude_cli` LLM banter providers are deliberately not implemented.**
+  `strategy/llm_bluff.py` implements `template` (default, zero-cost, offline) and `ollama` (local,
+  zero-cost) providers in full; requesting `claude_api`/`claude_cli` raises `NotImplementedError`
+  immediately rather than silently spending real API credits by default (`docs/assumptions.md`
+  A-005). This is a deliberate cost boundary, not a missing feature.
+- **The bonus reinforcement-learning brain (`strategy/qlearning.py`) has not been benchmarked
+  against the default heuristic.** It's implemented, tested for legality and for actually learning
+  (a hand-verified TD update), and plugs into a real two-orchestrator game end to end — but no
+  win-rate comparison against the heuristic brain has been run.
 - **The lecturer's PDF is intentionally not in this repository** (copyrighted, "all rights
   reserved" — see `docs/assumptions.md` A-011); this README and `docs/` cite section/appendix
   numbers instead of reproducing the text.
-- **`docs/final_audit.md`** and the live-view / Verified-OK screenshots required by the submission
-  checklist are still pending a final pass before tagging `v1.0-submission`.
+- **What's left before `v1.0-submission` is now entirely human steps, not missing code**: the
+  live-view/Verified-OK screenshots for the submission checklist, a real (non-draft) Gmail send
+  test against a live account, the real team roster in `config/<role>/game.toml`, and a decision on
+  the two-repository split. See `docs/STATUS.md` Phase 18 for the exact, current list.

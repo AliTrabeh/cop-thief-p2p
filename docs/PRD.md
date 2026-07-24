@@ -398,7 +398,7 @@ doesn't enumerate.
 | PRD-0283 | The strategy layer's only allowed inputs are the agent's own position, its belief map, and static config — never the opponent's private state. | Must | Done | FR-005 |
 | PRD-0284 | Strategy module tests run entirely without a display, network, or GUI dependency. | Must | Done | NFR-001 |
 | PRD-0285 | The brain interface exposes a hook for optional free-text "hint"/banter output, separate from and never influencing the move decision. | Should | Done | FR-064, README §4 |
-| PRD-0286 | A malformed or crashing custom brain implementation fails loudly and safely (caught, logged, converted to a technical loss) rather than corrupting shared process state. | Should | Partial | strategy/base.py |
+| PRD-0286 | A malformed or crashing custom brain implementation fails loudly and safely (caught, logged, converted to a technical loss) rather than corrupting shared process state. | Should | Done | orchestrator.py::produce_commit |
 | PRD-0287 | Strategy classes are pure decision functions with no persistent mutable global state between calls (aside from documented, intentional per-game history if any). | Should | Done | strategy/heuristic.py |
 | PRD-0288 | The strategy architecture is documented in `docs/protocol.md` §6 with the exact method signatures a custom brain must implement. | Should | Done | protocol.md §6 |
 | PRD-0289 | Strategy selection (which brain class runs) is resolved once at peer startup, not re-resolved mid-game. | Must | Done | peer_runtime.py |
@@ -439,40 +439,50 @@ doesn't enumerate.
 
 ## 19. Bonus: Reinforcement-Learning Brain
 
+Implemented this session (`strategy/qlearning.py`, BONUS-001) — tabular Q-learning, opt-in via
+`[strategy]` config, never the default. See the module docstring for the honestly-scoped reward
+signal it actually uses (turn-by-turn distance-delta shaping, since `BrainBase.decide()` has no
+callback for the true game outcome).
+
 | ID | Requirement | Priority | Status | Ref |
 |---|---|---|---|---|
-| PRD-0314 | An optional `strategy/qlearning.py` brain may implement tabular or function-approximation RL over the belief-map state space. | Bonus | Not Started | BONUS-001 |
-| PRD-0315 | If built, the RL brain must satisfy the same `BrainBase` contract as the heuristic brain (drop-in replaceable). | Bonus | Not Started | BONUS-001 |
-| PRD-0316 | If built, the RL brain's training process must be reproducible and documented (seed, hyperparameters, training script). | Bonus | Not Started | — |
-| PRD-0317 | If built, a trained model artifact must be small enough to commit to the repo or trivially regeneratable, not a multi-GB blob. | Bonus | Not Started | — |
-| PRD-0318 | If built, the RL brain must still only ever consume the same `BeliefView` input as the heuristic brain — no special-cased access to true board state. | Bonus | Not Started | FR-005 |
-| PRD-0319 | If built, the RL brain's decision latency must stay well within the per-turn timeout even during a real two-process game. | Bonus | Not Started | — |
-| PRD-0320 | If built, an RL-vs-heuristic benchmark (win rate over N games) should be documented to demonstrate the RL brain adds value. | Bonus | Not Started | — |
+| PRD-0314 | An optional `strategy/qlearning.py` brain implements tabular RL over a discretized belief-map state (signed direction + capped distance to the believed opponent + barrier availability). | Bonus | Done | BONUS-001 |
+| PRD-0315 | The RL brain satisfies the same `BrainBase` contract as the heuristic brain (drop-in replaceable via `[strategy]` config). | Bonus | Done | BONUS-001 |
+| PRD-0316 | The RL brain's learning process is reproducible and documented: a seedable RNG (`seed=`), documented `epsilon`/`alpha`/`gamma` hyperparameters, and the exact TD-update formula in the module docstring. | Bonus | Done | — |
+| PRD-0317 | The learned Q-table is a small JSON dict (state-tuple keys, per-action floats) optionally persisted via `save()`/`load()` — never a multi-MB/GB artifact, and not committed to the repo by default. | Bonus | Done | — |
+| PRD-0318 | The RL brain consumes only the same `BeliefView` input as the heuristic brain — no special-cased access to true board state. | Bonus | Done | FR-005 |
+| PRD-0319 | The RL brain's decision latency (a handful of dict lookups over a small discretized state) is negligible relative to the per-turn timeout. | Bonus | Done | — |
+| PRD-0320 | An RL-vs-heuristic benchmark (win rate over N games) demonstrating the RL brain outperforms the heuristic has not been produced — the brain is proven to play *legally* and *learn* (via a hand-verified TD update test), not proven to play *better*. | Bonus | Not Started | — |
 | PRD-0321 | The RL brain is explicitly optional per the spec — its absence must never block core submission requirements. | Must | Done | requirements_analysis.md §4 |
-| PRD-0322 | If built, RL training/inference dependencies (e.g. `numpy`, a small RL library) must be added to `pyproject.toml` only under an optional extras group, not bloating the default install. | Bonus | Not Started | — |
-| PRD-0323 | If not built, this is explicitly documented as "Not Started" (not silently omitted) in `docs/STATUS.md`, `docs/requirements_traceability.md`, and `README.md`'s Known Limitations. | Must | Done | STATUS.md |
-| PRD-0324 | If built, unit tests for the RL brain follow the same offline/no-I/O-dependency pattern as the rest of `strategy/`. | Bonus | Not Started | — |
-| PRD-0325 | The decision to build (or not build) the RL brain is a product/scope decision, not silently deferred without the user's awareness. | Must | Done | — |
+| PRD-0322 | No new third-party dependency was needed (pure stdlib: `random`, `json`, `pathlib`), so there was nothing to add under an optional extras group. | Bonus | Done (no new deps needed) | — |
+| PRD-0323 | Now that it's built, this is reflected as Done everywhere it's tracked (`docs/STATUS.md`, `docs/requirements_traceability.md`, `README.md`) rather than left stale as "Not Started". | Must | Done | STATUS.md |
+| PRD-0324 | Unit tests for the RL brain follow the same offline/no-I/O-dependency pattern as the rest of `strategy/` (the one exception, a save/load round-trip, uses `tmp_path` like every other config/log test in this repo). | Bonus | Done | tests/unit/test_qlearning.py |
+| PRD-0325 | The decision to build the RL brain (and how far to scope it) is a product/scope decision, made explicitly in this session, not silently deferred. | Must | Done | — |
 
 ## 20. Bonus: LLM Trash-Talk / Banter
 
+Implemented this session (`strategy/llm_bluff.py`, BONUS-002) — `template` (default, offline,
+zero-cost) and `ollama` (local, zero-cost) providers. `claude_api`/`claude_cli` are deliberately
+**not** implemented: requesting either raises `NotImplementedError` immediately rather than
+silently falling back or spending real API credits by default (A-005's no-default-spend policy).
+
 | ID | Requirement | Priority | Status | Ref |
 |---|---|---|---|---|
-| PRD-0326 | An optional `strategy/llm_bluff.py` module may generate free-text banter/trash-talk shown alongside a move, never used to decide the move itself. | Bonus | Not Started | FR-061 |
-| PRD-0327 | The `[llm]` config section (`model`, `step_deadline_seconds`) and `[trash_talk]` config section (`provider`) already exist and default to `template` (zero tokens, offline). | Must | Done | A-005 |
-| PRD-0328 | If built, banter generation must respect `hint_max_words` so output can't balloon into an unbounded wall of text. | Bonus | Not Started | FR-064 |
-| PRD-0329 | If built, banter generation must have a hard `step_deadline_seconds` timeout so a slow/unreachable LLM provider can never stall the game loop. | Bonus | Not Started | FR-062 |
-| PRD-0330 | If built, at minimum a `template` provider (canned phrases, zero cost, offline) must remain the default so the product never requires paid API credits out of the box. | Must | Done | A-005 |
-| PRD-0331 | If built, an `ollama` provider option supports a fully local/offline LLM with no per-token cost. | Bonus | Not Started | — |
-| PRD-0332 | If built, a `claude_api`/`claude_cli` provider option is available but never enabled by default, per the user's standing instruction to avoid consuming Anthropic API credits unless explicitly required. | Bonus | Not Started | A-005 |
-| PRD-0333 | If built, `token_budget_per_series` (already present in config, default 200000) caps total LLM spend across a league series regardless of provider. | Should | Partial | config/game.json |
-| PRD-0334 | If built, banter failures (LLM provider error/timeout) degrade gracefully to no-banter, never to a crashed turn or technical loss. | Must | Not Started | — |
-| PRD-0335 | If built, banter content must never leak information the emitting agent shouldn't reveal (true position, unrevealed move) — a content-safety boundary distinct from the game-legality boundary. | Must | Not Started | — |
-| PRD-0336 | If not built, this is explicitly documented as "Not Started" everywhere it's tracked (STATUS.md, traceability matrix, README), matching the honesty standard applied to the RL brain. | Must | Done | STATUS.md |
-| PRD-0337 | If built, unit tests mock the LLM provider entirely — no real API calls in the automated test suite. | Bonus | Not Started | testing_strategy.md |
-| PRD-0338 | If built, the banter feature is fully optional at the config level (`provider` can be left at `template` with zero behavior change to core gameplay). | Must | Done (config exists) | A-005 |
-| PRD-0339 | If built, banter output is included in the live GUI / logs distinctly from move data, clearly labeled as flavor text. | Bonus | Not Started | — |
-| PRD-0340 | The decision to leave LLM banter unimplemented in the current submission is a deliberate, documented cost/scope trade-off, not an oversight. | Must | Done | README §9 |
+| PRD-0326 | `strategy/llm_bluff.py` generates free-text banter/trash-talk shown alongside a move, never used to decide the move itself (the move stays pure Python). | Bonus | Done | FR-061 |
+| PRD-0327 | The `[llm]` config section (`model`, `step_deadline_seconds`) and `[trash_talk]` config section (`provider`) default to `template` (zero tokens, offline). | Must | Done | A-005 |
+| PRD-0328 | Banter generation respects `hint_max_words` (word-truncated for both providers) so output can't balloon into an unbounded wall of text. | Bonus | Done | FR-064 |
+| PRD-0329 | `OllamaBanterProvider` enforces `step_deadline_seconds` as its HTTP client timeout, so a slow/unreachable local model can never stall the game loop beyond the configured budget. | Bonus | Done | FR-062 |
+| PRD-0330 | `TemplateBanterProvider` (canned phrases, zero cost, offline) is the default, so the product never requires paid API credits out of the box. | Must | Done | A-005 |
+| PRD-0331 | `OllamaBanterProvider` supports a fully local/offline LLM (via Ollama's HTTP API) with no per-token cost. | Bonus | Done | — |
+| PRD-0332 | `claude_api`/`claude_cli` are deliberately not implemented — `build_banter_provider` raises `NotImplementedError` immediately for either, rather than silently falling back or spending real credits without explicit human action. | Bonus | Cut by design (A-005) | A-005 |
+| PRD-0333 | `token_budget_per_series` exists in config; it is not actively metered against `ollama` usage since a local model has no per-token billing to cap — the config field remains meaningful only if/when a paid provider is ever added deliberately. | Should | Partial | config/game.json |
+| PRD-0334 | Banter failures (provider error/timeout/malformed response) degrade gracefully to a template fallback line inside the provider itself, never to a crashed turn or technical loss. | Must | Done | tests/unit/test_llm_bluff.py |
+| PRD-0335 | Banter content cannot leak the emitting agent's true position or unrevealed move, by construction: `BanterContext` carries only `role` and `turn_number`, nothing position- or move-related, so there is nothing sensitive for a provider to leak even if it tried. | Must | Done (by construction) | — |
+| PRD-0336 | Now that it's built, this is reflected as Done everywhere it's tracked (`docs/STATUS.md`, traceability matrix, README) rather than left stale as "Not Started", matching the same honesty standard applied to the RL brain. | Must | Done | STATUS.md |
+| PRD-0337 | Unit tests mock the Ollama HTTP call entirely via an injected `httpx` transport — no real Ollama install or network access in the automated test suite. | Bonus | Done | tests/unit/test_llm_bluff.py |
+| PRD-0338 | The banter feature is fully optional at the config level (`provider` left at `template` is zero behavior change to core gameplay; an unimplemented/unknown provider disables banter for the game with a logged warning rather than crashing peer startup). | Must | Done | peer_runtime.py |
+| PRD-0339 | Banter output is logged distinctly from move data (`logger.info("banter: %s", ...)`) but is not yet surfaced as labeled flavor text inside the live GUI itself. | Bonus | Partial | gui/live_view.py |
+| PRD-0340 | The decision to implement only `template`+`ollama` and deliberately cut `claude_api`/`claude_cli` is a documented cost/scope trade-off, not an oversight. | Must | Done | README §9 |
 
 ## 21. Configuration Management
 
@@ -557,7 +567,7 @@ doesn't enumerate.
 | PRD-0402 | The Replay Viewer is exercised (not just unit tested in isolation) by the full integration test that plays a real two-orchestrator game and then verifies its own output log. | Must | Done | tests/integration/test_two_peer_game.py |
 | PRD-0403 | Replay verification checks every committed field independently (state, move, intent, nonce), matching the granularity of the crypto module's own tamper tests. | Must | Done | tests/unit/test_replay_viewer.py |
 | PRD-0404 | The Replay Viewer can be run by a third party (e.g. the lecturer) against a log file they didn't produce themselves, using only the documented CLI command. | Must | Done | README §6 |
-| PRD-0405 | A malformed/corrupted (not just tampered-but-well-formed) log file produces a clear error from the Replay Viewer, not a crash. | Should | Partial | gui/replay_viewer.py |
+| PRD-0405 | A malformed/corrupted (not just tampered-but-well-formed) log file produces a clear error from the Replay Viewer, not a crash. | Should | Done | gui/replay_viewer.py::load_log |
 | PRD-0406 | The Replay Viewer's pass/fail verdict is unambiguous in its printed output (no case where the result is unclear to a human reader). | Must | Done | gui/replay_viewer.py |
 | PRD-0407 | Replay Viewer logic has no GUI/display dependency of its own (distinct from the live GUI module), so it runs in any environment including CI. | Must | Done | tests/unit/test_replay_viewer.py |
 
@@ -592,7 +602,7 @@ doesn't enumerate.
 | PRD-0427 | The log deliverable contains the full committed/revealed move history sufficient for independent replay verification. | Must | Done | FR-045, FR-082 |
 | PRD-0428 | All four deliverables are written to a per-game directory (`logs/<game-id>/<role>/`), never overwriting a previous game's files. | Must | Done | README §6 |
 | PRD-0429 | Deliverable JSON schemas are stable and documented, so an automated grading script could parse them without ambiguity. | Must | Done | protocol.md §5 |
-| PRD-0430 | The declaration JSON's `commit_hash` field currently holds the placeholder `"unknown"` because a running process can't know its own containing commit's hash; this is documented, not silently wrong. | Must | Partial | final_audit.md §20 |
+| PRD-0430 | The declaration JSON's `commit_hash` field holds the real `HEAD` hash, discovered via `git rev-parse HEAD` at runtime; it only degrades to the placeholder `"unknown"` if the process isn't actually running from a git checkout. | Must | Done | infra/vcs.py |
 | PRD-0431 | Every deliverable file is schema-tested (unit test asserts the produced dict has every mandatory key). | Must | Done | tests/unit/test_reporting.py |
 | PRD-0432 | Deliverables are written correctly regardless of which terminal outcome the game reached (capture, survival, tie, technical loss). | Must | Done | final_audit.md §14 |
 | PRD-0433 | Deliverable file names encode the game ID unambiguously, so multiple games' outputs never collide on disk. | Must | Done | infra/reporting.py |
@@ -632,7 +642,7 @@ doesn't enumerate.
 | PRD-0457 | `min_games_to_pass` (default 2) is the minimum number of completed games required for a team to count as having participated. | Must | Done | FR-084 |
 | PRD-0458 | `max_games_per_team` (default 10) caps how many games a single team can play across the league. | Must | Done | FR-084 |
 | PRD-0459 | `diversity_reward` (default 10) exists to reward playing a wider variety of rival teams rather than repeatedly farming one weak opponent. | Should | Partial | FR-084 |
-| PRD-0460 | A mutual daily-log / games-played-count audit between rival teams is not yet wired — this only matters once actually running a real multi-game series. | Should | Planned | FR-083 |
+| PRD-0460 | This team's own games-played count is auditable against the league config via `infra/league_audit.py` / `python -m police_thief audit`; a genuinely *mutual* cross-team audit still needs an out-of-band log comparison with the rival team once actually running a real multi-game series. | Should | Done (own-side audit) | FR-083 |
 | PRD-0461 | Each individual game within a series produces its own complete set of four JSON deliverables, independently of series-level aggregation. | Must | Done | FR-082 |
 | PRD-0462 | League-level constants are all sourced from `config/game.json → network_and_league`, matching the spec's Table 18 numbers exactly. | Must | Done | A-002, A-004 |
 | PRD-0463 | A round-trip config test confirms the loaded `NetworkAndLeagueConfig` matches the book's own example numbers exactly. | Must | Done | tests/unit/test_config.py |
@@ -777,10 +787,10 @@ doesn't enumerate.
 | PRD-0567 | A game reaching exactly `max_moves` without capture is declared survival, not an off-by-one technical loss or an extra unplayed turn. | Must | Done | tests/unit/test_scoring.py |
 | PRD-0568 | Simultaneous/near-simultaneous scent decay and re-emission at the same cell in the same turn produces a well-defined (not order-dependent-by-accident) result. | Should | Done | tests/unit/test_scent.py |
 | PRD-0569 | A zero-length or empty move history at game end (a game that ends immediately) is handled by the replay verifier without crashing. | Should | Partial | gui/replay_viewer.py |
-| PRD-0570 | A config file with an unexpected extra/unknown field is handled per a documented policy (rejected vs. ignored), not undefined behavior. | Should | Partial | config.py |
+| PRD-0570 | A config file with an unexpected extra/unknown field is handled per a documented policy (rejected vs. ignored), not undefined behavior. | Should | Done | config.py, domain/models.py (`extra="forbid"`) |
 | PRD-0571 | A peer that disconnects mid-turn (not just a slow response, an actual connection drop) is distinguished from a slow-but-alive peer by the reliability layer. | Should | Done | infra/mcp_client.py |
 | PRD-0572 | Two peers with mismatched `shared_config_hash` fail fast and clearly at game start, rather than playing a game under silently divergent rules. | Must | Done | NFR-008 |
-| PRD-0573 | A custom strategy class that raises an unhandled exception mid-decision is caught at the Orchestrator boundary and converted to a defined failure mode, not an unhandled crash. | Should | Partial | strategy/base.py |
+| PRD-0573 | A custom strategy class that raises an unhandled exception mid-decision is caught at the Orchestrator boundary and converted to a defined failure mode, not an unhandled crash. | Should | Done | orchestrator.py::produce_commit |
 | PRD-0574 | An attempt to place a barrier on the agent's own current cell is correctly rejected (can't barricade yourself in). | Must | Done | tests/unit/test_board.py |
 | PRD-0575 | A move that would result in occupying a cell with an already-placed barrier from earlier in the same game is rejected identically to a move onto a barrier placed the prior turn. | Must | Done | tests/unit/test_board.py |
 | PRD-0576 | The Watchdog and Deadline Tracker firing at nearly the same moment (racing failure detectors) resolve to a single, well-defined outcome, not a double-fault crash. | Should | Not Verified | — |
@@ -789,7 +799,7 @@ doesn't enumerate.
 | PRD-0579 | A `max_barriers` of zero (barrier feature effectively disabled) is a valid, non-crashing configuration. | Could | Done | tests/unit/test_board.py |
 | PRD-0580 | Config validation errors always name the specific offending field, never a generic "invalid config" message. | Should | Done | config.py |
 | PRD-0581 | A tunnel provider misconfiguration (`provider = "manual"` with an empty `manual_public_url`) is caught at startup with a clear error, not a confusing later connection failure. | Should | Done | infra/tunnel.py |
-| PRD-0582 | Two peers running on the exact same machine but with colliding ports fail fast with a clear "port already in use"-style error. | Should | Partial | peer_runtime.py |
+| PRD-0582 | Two peers running on the exact same machine but with colliding ports fail fast with a clear "port already in use"-style error. | Should | Done | peer_runtime.py::_check_port_available |
 | PRD-0583 | The system's behavior under a genuinely adversarial, protocol-violating opponent (not just a buggy-but-honest one) is covered by at least one dedicated test scenario. | Must | Done | tests/network/test_mcp_transport.py |
 | PRD-0584 | Every "Planned"/"Not Started" item elsewhere in this document is cross-checked here as a known, accepted edge case rather than an accidental gap discovered later. | Should | Done | STATUS.md, this file |
 
@@ -802,7 +812,7 @@ doesn't enumerate.
 | PRD-0587 | Every commit in the repository's history has a clear, descriptive message explaining the "why," not just the "what." | Should | Done | git log |
 | PRD-0588 | The repository has no committed build artifacts, caches, or virtual environments (`.venv`, `.mypy_cache`, `.pytest_cache`, `.ruff_cache`, `.coverage` all gitignored). | Must | Done | .gitignore |
 | PRD-0589 | An annotated git tag `v1.0-submission` marks the exact commit intended for grading, once all other Phase 18 items are resolved. | Must | Planned | FR-086 |
-| PRD-0590 | The real GitHub commit hash (not the placeholder `"unknown"`) is filled into the declaration JSON's `commit_hash` field at submission time. | Must | Planned | FR-087 |
+| PRD-0590 | The real GitHub commit hash (not the placeholder `"unknown"`) is filled into the declaration JSON's `commit_hash` field automatically at runtime — no manual submission-time step needed. | Must | Done | FR-087, infra/vcs.py |
 | PRD-0591 | The live-view heatmap and Replay Viewer `Verified OK` screenshots for the Appendix C Table 6 checklist are captured and included with the submission. | Must | Planned | final_audit.md §20 |
 | PRD-0592 | A real (non-draft) end-of-game report email has been sent at least once to confirm the OAuth2 flow works against a live account before relying on it in an actual league match. | Should | Planned | final_audit.md §20 |
 | PRD-0593 | The real team roster (`group_name`, `group_id`, `members`) is filled into peer config with actual student identifiers before submission, replacing development placeholders. | Must | Planned | A-012 |
@@ -828,15 +838,20 @@ doesn't enumerate.
 | PRD-0608 | Any future rebalancing of the scoring table remains a pure config change under the current architecture, requiring no code changes — validated by design, not yet exercised with a real rebalance. | Should | Done (by design) | domain/scoring.py |
 | PRD-0609 | This PRD itself is a living document — future implementation work should add new PRD IDs (never renumber/reuse existing ones) and update `Status` in place. | Must | Done | this file's own header |
 | PRD-0610 | Any requirement in this document that becomes obsolete due to a scope change is marked `Cut` with a one-line reason, never silently deleted. | Must | Done | this file's own header |
-| PRD-0611 | The total requirement count in this document (611, as of this revision) is expected to grow further as the project moves through Phase 18 and beyond — 500 was a floor, not a target. | Must | Done | this file |
+| PRD-0611 | The total requirement count in this document (611, as of the first revision) is expected to grow further as the project moves through Phase 18 and beyond — 500 was a floor, not a target. | Must | Done | this file |
+| PRD-0612 | The "recommended" two-terminal demo (`scripts/run_police.ps1`/`run_thief.ps1`) must not silently corrupt one side's deliverables when both are run with default arguments exactly as documented. | Must | Done | scripts/run_police.ps1, scripts/run_thief.ps1 |
 
 ---
 
-**Total: 611 PRD items** (PRD-0001–PRD-0611) across 37 sections, as of 2026-07-24. Status summary:
-the large majority are **Done**; the honest gaps are the two optional bonus brains (RL, LLM
-banter — Sections 19–20, fully **Not Started** by design), a handful of submission-packaging steps
-in Section 36 (**Planned**, tracked identically in `docs/STATUS.md` Phase 18), and a small number
-of edge cases flagged **Not Verified** in Section 35 that would benefit from an explicit test before
-final submission. No item in this document was marked `Done` without a corresponding module, test,
-or manual-verification note backing it, matching this project's standing "no placeholder success
-claims" rule (`docs/final_audit.md` §17).
+**Total: 612 PRD items** (PRD-0001–PRD-0612) across 37 sections. Status as of the 2026-07-24
+implementation pass: the large majority are **Done**, including both optional bonus brains (RL —
+Section 19, LLM banter — Section 20, both implemented and tested this session), FR-083's league
+audit, FR-087's real commit hash, and several robustness fixes (crashing-brain handling, config
+strictness, malformed-log handling, port-collision handling) plus one real bug discovered and fixed
+along the way (PRD-0612: a demo-script output-directory collision). The remaining honest gaps are
+now all in Section 36 (submission packaging — screenshots, a real Gmail send, the real team roster,
+the two-repo decision, and the final tag; all **Planned**/**Deferred** and all requiring a human,
+not more code) plus a small number of edge cases flagged **Not Verified** in Section 35. No item in
+this document was marked `Done` without a corresponding module, test, or manual-verification note
+backing it, matching this project's standing "no placeholder success claims" rule
+(`docs/final_audit.md` §17).

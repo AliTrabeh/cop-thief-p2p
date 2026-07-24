@@ -517,3 +517,59 @@ message for it).
 
 **Next**: remaining named gaps are `strategy/llm_bluff.py` (LLM banter provider), FR-083 (multi-game
 league audit), and the two-repo submission split (A-008) — see `docs/final_audit.md`.
+
+## 2026-07-24 — Gap closure pass: FR-083, FR-087, both bonus AI brains, robustness fixes
+
+**Goal**: close every remaining named gap that was actually buildable without a human (real
+credentials, a real GitHub account decision, real student roster), following a direct request to
+implement whatever wasn't yet done.
+
+**What shipped**:
+- `infra/vcs.py::current_commit_hash()` — real `git rev-parse HEAD` at runtime, replacing the
+  `"unknown"` placeholder in the declaration JSON (FR-087).
+- `orchestrator.py::produce_commit()` now catches any exception a pluggable strategy raises and
+  converts it into this side's own technical loss instead of crashing the peer process.
+- `config.py`/`domain/models.py` — every config schema model now sets `extra="forbid"`, so a
+  typo'd/unknown field (top-level or nested) fails loudly at load time (PRD-0570).
+- `infra/league_audit.py` + `python -m police_thief audit` — FR-083's games-played count audit
+  against `min_games_to_pass`/`max_games_per_team`, scanning real deliverable files.
+- `strategy/qlearning.py` — BONUS-001, tabular Q-learning brains (`QLearningPoliceBrain`/
+  `QLearningThiefBrain`), opt-in via `[strategy]` config, never the default. Learns via a
+  turn-by-turn distance-delta shaped reward (no true win/loss callback exists in `BrainBase`,
+  documented honestly rather than pretended away). Barrier placement reuses the heuristic's
+  cornering rule; movement direction is the learned part.
+- `strategy/llm_bluff.py` — BONUS-002, `TemplateBanterProvider` (default, offline) and
+  `OllamaBanterProvider` (local, zero-cost); `claude_api`/`claude_cli` deliberately raise
+  `NotImplementedError` rather than silently spend real API credits (A-005). Wired into
+  `peer_runtime.py` as a purely cosmetic, logged-only side effect after each own turn.
+- `gui/replay_viewer.py::load_log` — structurally validates every log entry now, so a
+  corrupted-but-syntactically-valid-JSON log produces a clear `ReplayError` instead of a raw
+  `KeyError` from inside `verify_step`.
+- `peer_runtime.py::_check_port_available` — proactively probes the port with a real socket bind
+  before starting the FastMCP server. Necessary, not cosmetic: uvicorn's own bind-failure path
+  calls `sys.exit()` from inside the server's asyncio task, and asyncio specially re-raises
+  `SystemExit` straight out of the event loop's dispatch step, bypassing the task's stored
+  exception entirely — an earlier attempt to catch this via `server_task.done()` after the fact
+  was written, reproduced the crash, and then fixed with the proactive check instead.
+- **Bug found and fixed**: `scripts/run_police.ps1`/`run_thief.ps1` both defaulted `--output-dir`
+  to the same directory (`logs/<game-id>`, no role subdirectory) — running the README's own
+  "recommended" two-terminal demo exactly as documented meant one side's four JSON deliverables
+  silently overwrote the other's. `run_demo.ps1` already used per-role subdirectories correctly;
+  the two standalone scripts now match it.
+
+**Tests executed**: full `ruff format`/`ruff check`/`mypy src` clean after every change; fast
+subset grew from 146 → 206 passing tests across seven commits; the real two-subprocess e2e test
+was re-run three times across this pass (once after the brain-crash/commit-hash change, once after
+the LLM banter wiring, once after the port-check fix) and stayed green throughout, ~68-73s each
+run. Coverage rose from ~80% to ~84% overall.
+
+**Docs updated**: `docs/STATUS.md` (both bonus phases now Done, Phase 18 open items trimmed to
+human-only steps), `docs/requirements_traceability.md` (FR-033/061/062/063/083/087, BONUS-001/002
+rows), `docs/PRD.md` (sections 19-20 rewritten, 8 scattered items updated, PRD-0612 added for the
+demo-script bug, total now 612 items), `README.md` (Known Limitations, LLM usage paragraph, test
+count, new `audit` command), `docs/final_audit.md` (§1, §9, §20, closing summary).
+
+**Remaining genuinely open items — all need a human, not more code**: the two-repo submission
+split (A-008, needs a decision), submission screenshots (needs a real display to capture from), a
+real non-draft Gmail send (needs live OAuth credentials and consent), the real team roster (needs
+actual student identifiers), and tagging `v1.0-submission` once those are done.
