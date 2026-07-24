@@ -241,7 +241,203 @@ doesn't enumerate.
 | PRD-0161 | The "Intent" field in the commit hash captures the semantic action (move vs. barrier) distinctly from the raw direction/coordinate payload. | Must | Done | FR-040 |
 | PRD-0162 | Nonces are never logged or transmitted before their corresponding reveal phase (checked by the logging redaction filter). | Must | Done | NFR-004 |
 
+## 10. Anti-Cheat & Tamper Detection
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0163 | A player cannot change a committed move after seeing the opponent's commit (the hash is announced before either side's move is known in plaintext). | Must | Done | FR-040 |
+| PRD-0164 | A player cannot claim a false capture/survival outcome — outcomes are derived independently from real board state on each side. | Must | Done | FR-044, E-22 |
+| PRD-0165 | A player cannot claim to have played a legal move that was actually illegal — the receiving side independently re-validates every revealed move. | Must | Done | FR-016, FR-044 |
+| PRD-0166 | A player cannot retroactively alter game history — the log is append-only and every entry is covered by the eventual full-log replay verification. | Must | Done | FR-045 |
+| PRD-0167 | A player cannot selectively skip revealing a committed move without triggering a technical loss (the state machine requires reveal to advance). | Must | Done | FR-052 |
+| PRD-0168 | A player cannot forge the opponent's identity — messages are addressed to a specific configured `opponent_url`, and (where signature verification is wired) validated. | Must | Partial | FR-051 |
+| PRD-0169 | Cheating detection never depends on trusting the accused party's own logs — verification always replays independently-held commit records. | Must | Done | FR-045 |
+| PRD-0170 | Every anti-cheat guarantee claimed in the README is backed by at least one negative-path test (tampered input correctly rejected), not just a positive-path test. | Must | Done | tests/unit/test_crypto.py, tests/unit/test_replay_viewer.py |
+| PRD-0171 | The commit-reveal protocol is documented as directly matching Appendix E's anti-cheat mandatory items, with an explicit E-## cross-reference for each. | Should | Done | requirements_analysis.md |
+| PRD-0172 | Duplicate message replay (an old, already-processed message resent) is detected and rejected by the transport/sequencing layer. | Must | Done | PROTO-004 |
+| PRD-0173 | Stale/out-of-sequence messages are rejected rather than silently reordered or accepted. | Must | Done | PROTO-004 |
+| PRD-0174 | Malformed payloads (schema-invalid JSON) are rejected at the server boundary before reaching game logic. | Must | Done | FR-051 |
+| PRD-0175 | Oversized payloads are rejected by a dedicated size guard, preventing a memory/DoS vector through the message channel. | Must | Done | NFR-006 |
+| PRD-0176 | A signature-verification step exists in the message-handling pipeline design, even though full cryptographic signing of every message (beyond the commit hash itself) is only partially wired. | Should | Partial | FR-051 |
+| PRD-0177 | The anti-cheat design assumes an adversarial opponent by default — every acceptance path has a corresponding rejection test for the adversarial case. | Must | Done | testing_strategy.md |
+
+## 11. P2P Networking & FastMCP Transport
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0178 | Peers communicate exclusively via the Model Context Protocol (MCP), using FastMCP as the concrete implementation. | Must | Done | FR-050 |
+| PRD-0179 | Each peer process runs its own FastMCP tool server (`infra/mcp_server.py`), exposing its game-protocol tools to the opponent. | Must | Done | FR-050 |
+| PRD-0180 | Each peer process also acts as an MCP client (`infra/mcp_client.py`) calling into the opponent's server — a genuinely symmetric P2P design, not client-server in disguise. | Must | Done | architecture.md §1/§9 |
+| PRD-0181 | No component in the architecture plays the role of a central match server, judge, or lobby. | Must | Done | FR-001 |
+| PRD-0182 | A real local FastMCP server+client round trip is tested over the real in-process transport (genuine protocol behavior, no sockets needed in CI). | Must | Done | TEST-005 |
+| PRD-0183 | Network calls have a configurable timeout (`response_timeout_sec`, default 30s per game.json / `turn_timeout_seconds`, default 180s per peer config). | Must | Done | FR-053 |
+| PRD-0184 | A timed-out call triggers a retry per the Deadline Tracker's configured retry policy before giving up. | Must | Done | FR-004, FR-053 |
+| PRD-0185 | An unreachable peer, after exhausting retries, raises a clear, catchable error rather than hanging indefinitely. | Must | Done | TEST-005 |
+| PRD-0186 | `wait_until_reachable` allows a peer to poll for its opponent coming online before starting the game loop, for orderly startup. | Should | Done | FR-004 |
+| PRD-0187 | For genuinely remote play, a local tunneling tool (ngrok) can expose the local FastMCP server publicly. | Must | Done | FR-006 |
+| PRD-0188 | ngrok tunnel lifecycle (start, discover assigned public URL via ngrok's local admin API, tear down on shutdown) is fully automated. | Must | Done | FR-006 |
+| PRD-0189 | A `provider = "manual"` config mode supports any other tunneling tool (e.g. Localtonet) by letting the user paste in the public URL directly. | Must | Done | FR-006, A-018 |
+| PRD-0190 | A `provider = "none"` config mode (the default) skips tunneling entirely for localhost-only play. | Must | Done | FR-006 |
+| PRD-0191 | Starting a tunnel is understood/documented to expose only this peer's own port; the discovered public URL still must be exchanged with the rival out-of-band. | Must | Done | README §9 |
+| PRD-0192 | The tunnel module's external dependencies (the ngrok binary, its local HTTP admin API) are fully fake-able/injectable for unit testing without a real ngrok install. | Must | Done | tests/unit/test_tunnel.py |
+| PRD-0193 | 11+ dedicated unit tests cover tunnel start/stop/URL-discovery/failure paths. | Must | Done | tests/unit/test_tunnel.py |
+| PRD-0194 | A real two-OS-process game (not simulated) completes successfully over real HTTP on localhost, with both processes launched independently. | Must | Done | TEST-007 |
+| PRD-0195 | Per-message sessions (initialize → notify → SSE → close) are used rather than one long-lived connection, a documented simplicity-over-latency trade-off. | Should | Done | README §2 |
+| PRD-0196 | The documented latency cost of per-message sessions (several seconds per turn in a real two-process game) is explicitly called out, not hidden. | Should | Done | README §2, progress.md |
+| PRD-0197 | Each peer's `opponent_url` is independently configured per role (`config/<role>/game.toml → [network] → opponent_url`), never auto-discovered or centrally assigned. | Must | Done | config/police/game.toml |
+| PRD-0198 | The network module has clean separation between transport concerns (`mcp_client.py`/`mcp_server.py`) and protocol/message-shape concerns (`infra/protocol.py`). | Should | Done | architecture.md §2 |
+| PRD-0199 | The FastMCP server's tool surface is documented in `docs/protocol.md` with the exact tool names and argument schemas. | Should | Done | protocol.md §1 |
+| PRD-0200 | Running against a real ngrok binary and a genuinely remote rival is explicitly flagged as not yet done, rather than falsely claimed as tested. | Must | Done | README §9 (Known Limitations) |
+| PRD-0201 | The transport layer never silently swallows a network error — every failure path either retries per policy or surfaces as a technical-loss/watchdog event. | Must | Done | FR-053, FR-054 |
+| PRD-0202 | Port numbers for both roles are independently configurable (`my_port`, default 8801/8802) to avoid collisions when running two peers on one machine. | Must | Done | config/police/game.toml |
+
+## 12. Message Protocol Schema
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0203 | Every protocol message carries an explicit `schema_version` field for forward/backward compatibility checks. | Must | Done | PROTO-001 |
+| PRD-0204 | The shared config (`config/game.json`) is hash-checked between peers (`shared_config_hash`) so both sides provably agree on the same rule set before playing. | Must | Done | NFR-008 |
+| PRD-0205 | A `ProtocolMessage`/`ProtocolResponse` pair of typed structures defines every wire message shape — no ad hoc untyped dicts crossing the network boundary. | Must | Done | infra/protocol.py |
+| PRD-0206 | Message sequencing (turn/step numbers) is tracked and validated server-side to catch duplicate or skipped steps. | Must | Done | FR-051, PROTO-004 |
+| PRD-0207 | The COMMIT message type carries only the hash, never the plaintext move, at the point it's sent. | Must | Done | protocol.md §3 |
+| PRD-0208 | The REVEAL message type carries the plaintext move plus the nonce needed to re-derive the commit hash. | Must | Done | protocol.md §3 |
+| PRD-0209 | The FINAL_REVEAL message type carries every nonce used across the whole game, for end-of-game full-log verification. | Must | Done | FR-045 |
+| PRD-0210 | Every message type used in the protocol is enumerated and documented in `docs/protocol.md`, with no undocumented "secret" message types in the code. | Should | Done | protocol.md |
+| PRD-0211 | A schema-invalid message (missing required field, wrong type) produces a clear rejection at the server, not an unhandled exception/stack trace to the caller. | Must | Done | FR-051 |
+| PRD-0212 | Protocol message and response types are validated with Pydantic (or equivalent), not manual dict-key checking scattered through the code. | Should | Done | infra/protocol.py |
+| PRD-0213 | The full 4-phase sequence (commit → ack → reveal → confirm) is enforced in order by the receiving side's state machine, not just assumed. | Must | Done | protocol.md §4 |
+| PRD-0214 | Config schema version (`"1.2"` for `game.json`, `"1.10"` for peer `game.toml`) is explicit and checked, so a stale config format fails loudly rather than silently misbehaving. | Should | Done | config/game.json |
+| PRD-0215 | The `group_name`/`group_id`/`members`/`repos` identity block in peer config is part of the documented schema, feeding the declaration JSON deliverable. | Must | Done | FR-088 |
+| PRD-0216 | Protocol-level tests exercise the network transport's real request/response cycle end-to-end, not just schema unit tests in isolation. | Must | Done | TEST-005 |
+| PRD-0217 | The protocol module (`infra/protocol.py`) is decoupled from FastMCP specifics, so the message shapes could in principle be reused over a different transport. | Could | Done | architecture.md §2 |
+| PRD-0218 | Every mandatory parameter from Appendix F's parameter table is represented as a field somewhere in the `game.json` schema, cross-checked explicitly. | Must | Done | requirements_traceability.md "Coverage check" |
+| PRD-0219 | Protocol version negotiation failure (mismatched `schema_version` between peers) is a defined, tested failure mode, not undefined behavior. | Should | Done | PROTO-001 |
+| PRD-0220 | The message protocol never embeds secrets (API keys, tokens, credentials) in any message payload. | Must | Done | NFR-004 |
+
+## 13. Game State Machine & Turn Sequencing
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0221 | Game phases are modeled as an explicit `GamePhase` enum, not implicit state scattered across booleans/flags. | Must | Done | FR-052 |
+| PRD-0222 | Every legal phase transition is enumerated in a transition table matching `docs/protocol.md` §4 exactly. | Must | Done | FR-052 |
+| PRD-0223 | Any illegal transition attempt raises a dedicated `IllegalTransitionError`, never silently ignored or coerced. | Must | Done | TEST-004 |
+| PRD-0224 | `TECHNICAL_LOSS` is terminal — no transition out of it exists in the table. | Must | Done | TEST-004 |
+| PRD-0225 | Every legal transition in the table has a corresponding positive-path test asserting it succeeds. | Must | Done | TEST-004 |
+| PRD-0226 | Every illegal transition has a corresponding negative-path test asserting it raises. | Must | Done | TEST-004 |
+| PRD-0227 | The state machine is a standalone, dependency-free module (`domain/state_machine.py`) usable and testable without any networking code running. | Must | Done | NFR-001 |
+| PRD-0228 | Turn order (cop/thief alternation, or whatever ordering the spec mandates) is enforced by the state machine, not left to strategy code discipline. | Must | Done | FR-052 |
+| PRD-0229 | The Orchestrator wires the state machine as the authoritative gate for every phase change in an actual running game (not just a standalone testable component). | Must | Done | architecture.md §5 |
+| PRD-0230 | The state machine has no notion of "trust the other peer" — each peer runs its own independent instance and only advances on messages that pass validation. | Must | Done | FR-052 |
+| PRD-0231 | A frozen/stuck main loop (no phase progress) is detectable by the Watchdog as distinct from a legitimately slow-but-alive opponent. | Must | Done | FR-054 |
+| PRD-0232 | State-machine phase names in logs match the documented enum values exactly (no drift between docs and code). | Should | Done | protocol.md §4 |
+| PRD-0233 | Turn sequencing survives the real two-OS-process e2e scenario with both sides' state machines reaching the identical terminal phase. | Must | Done | TEST-007 |
+| PRD-0234 | The state machine diagram in `docs/architecture.md`/`docs/protocol.md` is a Mermaid diagram, not just prose, per the documentation deliverable requirement. | Should | Done | DOC-002 |
+| PRD-0235 | A "start of game" initial phase and a well-defined set of terminal phases are both explicitly modeled (no ambiguous "null" state). | Must | Done | domain/state_machine.py |
+| PRD-0236 | Every turn's phase sequence is captured in the exported game log for later replay verification. | Must | Done | FR-045 |
+| PRD-0237 | Concurrent/overlapping turns (both sides trying to act "at once") cannot occur — the state machine's phase gating serializes the interaction. | Must | Done | FR-052 |
+| PRD-0238 | State machine transitions are cheap, synchronous, in-process calls — no network I/O inside the state machine itself. | Must | Done | NFR-001 |
+
+## 14. Reliability: Deadline Tracker & Watchdog
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0239 | A Deadline Tracker enforces a per-call response timeout against the opponent (`response_timeout_sec`). | Must | Done | FR-004, FR-053 |
+| PRD-0240 | The Deadline Tracker retries a timed-out call according to a configured policy before declaring the opponent unreachable. | Must | Done | FR-053 |
+| PRD-0241 | A Watchdog independently monitors the main game loop for the local process freezing/hanging (`watchdog_timeout_sec`, default 60s). | Must | Done | FR-054 |
+| PRD-0242 | The Watchdog triggers a clean shutdown (not a crash/hang) when it detects a frozen main loop. | Must | Done | FR-054 |
+| PRD-0243 | Deadline Tracker and Watchdog are tested independently of each other (separate simulated failure scenarios). | Must | Done | tests/unit/test_watchdog.py |
+| PRD-0244 | A simulated unresponsive peer correctly triggers the deadline-tracker technical-loss path in an integration test. | Must | Done | implementation_plan.md Part 9 |
+| PRD-0245 | A simulated frozen main loop correctly triggers watchdog-initiated shutdown in a test. | Must | Done | implementation_plan.md Part 9 |
+| PRD-0246 | Both reliability mechanisms are wired into the Orchestrator's Single Gateway, not bolted on separately per call site. | Must | Done | architecture.md §6/§7 |
+| PRD-0247 | Cleanup on any failure path (deadline exceeded, watchdog fired, normal completion) goes through the same `finally`-block teardown (server task cancellation, GUI teardown). | Must | Done | NFR-003 |
+| PRD-0248 | The four JSON deliverables are still written correctly even when a game ends via technical loss/timeout, not just on a clean finish. | Must | Done | final_audit.md §14 |
+| PRD-0249 | Watchdog and Deadline Tracker timeouts are both independently configurable via `config/game.json`, not hardcoded constants. | Must | Done | config/game.json |
+| PRD-0250 | A documented, known cosmetic issue exists (cancelling the ASGI server task logs a noisy but harmless traceback) rather than being hidden or silently worked around with a broad exception swallow. | Could | Done | final_audit.md §14 |
+| PRD-0251 | The failure-mode table in `docs/architecture.md` §7 enumerates every reliability scenario handled (timeout, freeze, malformed input, oversized payload, etc.). | Should | Done | architecture.md §7 |
+| PRD-0252 | Retry backoff behavior (`retry_backoff_sec`, `max_retries`) is shared config between the Gatekeeper and the Deadline Tracker's retry policy, avoiding duplicated constants. | Should | Done | config/game.json |
+| PRD-0253 | No reliability mechanism (Watchdog, Deadline Tracker) can itself cause a false technical-loss for a peer that is, in fact, behaving correctly but simply slow within tolerance. | Must | Done | tests/unit/test_watchdog.py |
+
+## 15. Rate Limiting & Gatekeeper
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0254 | A Token Bucket algorithm governs the rate of outgoing/incoming calls (`requests_per_minute`, default 30). | Must | Done | FR-055 |
+| PRD-0255 | The Token Bucket's burst-then-refill curve numerically matches the book's own documented figure. | Must | Done | implementation_plan.md Part 10 |
+| PRD-0256 | A Quota Manager enforces a daily/session budget and rejects calls once exhausted. | Must | Done | FR-055 |
+| PRD-0257 | A DOS Detector locks/blocks on an anomalous burst pattern distinct from normal gameplay traffic. | Must | Done | FR-055 |
+| PRD-0258 | Concurrent in-flight request count is capped (`concurrent_requests`, default 2). | Must | Done | config/game.json |
+| PRD-0259 | A bounded retry-queue depth (`queue_depth`, default 100) prevents unbounded memory growth under sustained overload. | Must | Done | config/game.json |
+| PRD-0260 | The Gatekeeper pipeline (Token Bucket → Quota Manager → DOS Detector) is composed as a single guarded entry point, not scattered ad hoc checks. | Must | Done | infra/gatekeeper.py |
+| PRD-0261 | Gmail send calls are Gatekeeper-guarded exactly like game-protocol calls — no separate ungoverned path to send email. | Must | Done | FR-080 |
+| PRD-0262 | An integration test with a fake clock proves the Quota Manager blocks a send once the configured budget is exhausted. | Must | Done | implementation_plan.md Part 11 |
+| PRD-0263 | Oversized-payload rejection (NFR-006) is enforced at both the Gatekeeper and the MCP server boundary as defense in depth. | Should | Done | tests/network/test_mcp_transport.py |
+| PRD-0264 | Rate-limiter constants (`requests_per_minute`, `concurrent_requests`, `retry_backoff_sec`, `max_retries`, `queue_depth`) all live in `config/game.json → rate_limiter_gatekeeper`, not hardcoded. | Must | Done | config/game.json |
+| PRD-0265 | The Gatekeeper module has a fully independent, mockable-clock unit test suite (no real `time.sleep` waits needed to exercise the refill logic). | Should | Done | tests/unit/test_gatekeeper.py |
+| PRD-0266 | Rejected calls due to rate limiting produce a distinct, identifiable error/response rather than looking like a generic failure. | Should | Done | infra/gatekeeper.py |
+| PRD-0267 | The Gatekeeper is reusable across both the game-protocol channel and the Gmail-reporting channel via a shared interface. | Should | Done | infra/gatekeeper.py |
+| PRD-0268 | Rate-limiting behavior is exercised (not bypassed) even in the real two-OS-process e2e test, proving it doesn't just work in mocked unit tests. | Should | Done | tests/e2e/test_two_peer_local_game.py |
+| PRD-0269 | The DOS Detector's anomaly threshold is config-driven and documented, not a magic number buried in code. | Should | Done | infra/gatekeeper.py |
+| PRD-0270 | Gatekeeper rejections never crash the process — they're a normal, handled control-flow branch. | Must | Done | infra/gatekeeper.py |
+| PRD-0271 | The rate-limiting design explicitly protects against both an aggressive opponent and a misbehaving local retry loop (bidirectional protection, not just inbound). | Should | Done | architecture.md §7 |
+
+## 16. Strategy / AI Brain Architecture
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0272 | A `BrainBase` abstract base class defines the contract every strategy implementation must satisfy. | Must | Done | FR-060 |
+| PRD-0273 | Role-specific subclasses (`ThiefBrain`, `PoliceBrain`) narrow the contract per role without duplicating shared logic. | Must | Done | FR-060 |
+| PRD-0274 | Strategy code receives a `BeliefView` (partial-observability-respecting) input, never the raw true `BoardState`. | Must | Done | FR-005, FR-060 |
+| PRD-0275 | The brain interface's "decide a move" method always returns a value from the legal action space for the current board state. | Must | Done | implementation_plan.md Part 7 |
+| PRD-0276 | A property-based fuzz test generates many random legal board states and asserts the default brain's output is always legal. | Should | Done | implementation_plan.md Part 7 |
+| PRD-0277 | Strategy modules have zero direct network/transport dependencies — the Orchestrator calls the brain, not the other way around. | Must | Done | architecture.md §6 |
+| PRD-0278 | The default brain requires no machine-learning model, training data, or GPU — it must run instantly, deterministically, offline. | Must | Done | README §4 |
+| PRD-0279 | No reinforcement learning is used by default, matching the spec's framing of RL as optional, not mandatory. | Must | Done | requirements_analysis.md §4 |
+| PRD-0280 | Strategy decisions are logged (which move was chosen and, ideally, why) to aid debugging and replay analysis. | Should | Partial | domain logging |
+| PRD-0281 | The strategy interface is stable enough that a rival team's brain can be swapped in without any change to `orchestrator.py`, `domain/`, or `infra/`. | Must | Done | README §4 |
+| PRD-0282 | Barrier-placement decisions (cop-only) are part of the same brain interface as movement decisions, not a bolted-on separate mechanism. | Must | Done | strategy/heuristic.py |
+| PRD-0283 | The strategy layer's only allowed inputs are the agent's own position, its belief map, and static config — never the opponent's private state. | Must | Done | FR-005 |
+| PRD-0284 | Strategy module tests run entirely without a display, network, or GUI dependency. | Must | Done | NFR-001 |
+| PRD-0285 | The brain interface exposes a hook for optional free-text "hint"/banter output, separate from and never influencing the move decision. | Should | Done | FR-064, README §4 |
+| PRD-0286 | A malformed or crashing custom brain implementation fails loudly and safely (caught, logged, converted to a technical loss) rather than corrupting shared process state. | Should | Partial | strategy/base.py |
+| PRD-0287 | Strategy classes are pure decision functions with no persistent mutable global state between calls (aside from documented, intentional per-game history if any). | Should | Done | strategy/heuristic.py |
+| PRD-0288 | The strategy architecture is documented in `docs/protocol.md` §6 with the exact method signatures a custom brain must implement. | Should | Done | protocol.md §6 |
+| PRD-0289 | Strategy selection (which brain class runs) is resolved once at peer startup, not re-resolved mid-game. | Must | Done | peer_runtime.py |
+
+## 17. Default Heuristic Brain
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0290 | The default cop brain moves to minimize Manhattan distance to `argmax_s b(s)` (the believed most-likely thief cell). | Must | Done | README §4 |
+| PRD-0291 | The default cop brain places a cornering barrier instead of moving when the believed thief cell is adjacent. | Should | Done | README §4 |
+| PRD-0292 | The default thief brain moves to maximize the same Manhattan distance (pure evasion heuristic). | Must | Done | README §4 |
+| PRD-0293 | The default heuristic is fully deterministic — the same belief state always produces the same move (no randomness). | Must | Done | strategy/heuristic.py |
+| PRD-0294 | The default heuristic never requires network access, model downloads, or external services to run. | Must | Done | README §4 |
+| PRD-0295 | The default heuristic is the out-of-the-box behavior with zero configuration required (works immediately after `uv sync`). | Must | Done | README §6 |
+| PRD-0296 | The default heuristic's tie-breaking rule (multiple equally-good moves) is deterministic and documented, not arbitrary dict-ordering-dependent behavior. | Should | Done | strategy/heuristic.py |
+| PRD-0297 | The default heuristic correctly handles the case where the belief map is still uniform/empty (start of game, no scent yet) without crashing. | Must | Done | tests/unit/test_strategy.py |
+| PRD-0298 | The default heuristic respects the barrier cap — it never attempts a barrier placement once `max_barriers` is reached. | Must | Done | tests/unit/test_strategy.py |
+| PRD-0299 | The default heuristic is fast enough to decide a move well within the per-turn timeout, with large headroom. | Must | Done | README §6 |
+| PRD-0300 | The default heuristic's behavior is covered by unit tests asserting both the "chase" (cop) and "evade" (thief) directionality against known belief-map fixtures. | Must | Done | tests/unit/test_strategy.py |
+| PRD-0301 | The default heuristic serves as the reference implementation new custom brains are expected to at least match in legality/robustness, per `docs/protocol.md` §6. | Should | Done | protocol.md §6 |
+
+## 18. Pluggable Strategy System
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0302 | A rival team can point their peer config at their own strategy class via `[strategy] → police_class`/`thief_class` in `config/<role>/game.toml`. | Must | Done | FR-060 |
+| PRD-0303 | The pluggable class reference uses the `package.module:Class` string format, resolved dynamically at startup. | Must | Done | strategy/base.py::load_brain_class |
+| PRD-0304 | The loader validates that the resolved class is actually a subclass of `BrainBase` before accepting it. | Must | Done | strategy/base.py |
+| PRD-0305 | The loader rejects a non-`BrainBase` class with a clear error message, not a cryptic `AttributeError` at first use. | Must | Done | tests/unit/test_strategy.py |
+| PRD-0306 | The loader rejects a malformed `module:Class` string (wrong format, unimportable module, missing class) with a clear, actionable error. | Must | Done | strategy/base.py |
+| PRD-0307 | If `[strategy]` is left unset (commented out, the shipped default), the peer falls back to the shipped heuristic brain with zero extra config. | Must | Done | config/police/game.toml |
+| PRD-0308 | Swapping in a custom brain requires no changes to `orchestrator.py`, `infra/`, or `domain/` — verified by the architecture's module-boundary design. | Must | Done | README §4 |
+| PRD-0309 | A custom brain can, in principle, be an RL-trained model, an LLM-backed decision-maker, or any other approach, as long as it satisfies the `BrainBase` contract. | Should | Done | README §4 |
+| PRD-0310 | The pluggable-loader test suite covers both the happy path (valid custom class resolves and runs) and multiple failure paths. | Must | Done | tests/unit/test_strategy.py |
+| PRD-0311 | Custom-brain loading happens once at peer startup, with a clear startup-time failure if the class can't be resolved (never a silent fallback to default that masks a config typo). | Must | Done | peer_runtime.py |
+| PRD-0312 | The pluggable strategy mechanism is documented with a worked example (exact config syntax) in `docs/protocol.md` §6. | Should | Done | protocol.md §6 |
+| PRD-0313 | Pluggability is exercised by at least one test that supplies a genuinely custom (non-default) `BrainBase` subclass and confirms it's actually invoked, not silently ignored. | Must | Done | tests/unit/test_strategy.py |
+
 ---
 
-*Continued in the next sections (10–37) covering networking, protocol, reliability, strategy,
-config, CLI, GUI, reporting, testing, non-functional requirements, and submission packaging.*
+*Continued in the next sections (19–37) covering bonus AI brains, config, CLI, GUI, reporting,
+league play, tunneling, testing, non-functional requirements, and submission packaging.*
