@@ -55,6 +55,24 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     replay.set_defaults(handler=_run_replay)
 
+    audit = subparsers.add_parser(
+        "audit", help="FR-083: check this team's own games-played count against the league config"
+    )
+    audit.add_argument(
+        "--logs-dir",
+        type=Path,
+        default=Path("logs"),
+        help="directory to scan recursively for declaration_*.json files (default: ./logs)",
+    )
+    audit.add_argument("--group-id", required=True, help="this team's group_id, per game.toml")
+    audit.add_argument(
+        "--config-dir",
+        type=Path,
+        default=Path("config"),
+        help="directory containing game.json (default: ./config)",
+    )
+    audit.set_defaults(handler=_run_audit)
+
     return parser
 
 
@@ -101,6 +119,21 @@ def _run_replay(args: argparse.Namespace) -> int:
         return 1
     print(f"Replay of {args.log}: {verdict}")
     return 0 if verdict == "Verified OK" else 2
+
+
+def _run_audit(args: argparse.Namespace) -> int:
+    from police_thief.config import ConfigError, load_game_config
+    from police_thief.infra.league_audit import audit_league_series
+
+    try:
+        game_config = load_game_config(args.config_dir / "game.json")
+    except ConfigError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    report = audit_league_series(args.logs_dir, args.group_id, game_config.network_and_league)
+    for line in report.summary_lines():
+        print(line)
+    return 0 if report.passes else 2
 
 
 def main(argv: list[str] | None = None) -> None:
