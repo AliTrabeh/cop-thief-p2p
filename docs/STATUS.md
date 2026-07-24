@@ -9,9 +9,12 @@ implementation part, alongside `docs/progress.md`.
 not more coding) · 🎁 Bonus (not required for the core grade)
 
 Overall: **19 of 20 phases done** (including both bonus phases), 1 phase partially open (submission
-packaging, and that's now down to items only a human can finish — see below). 205/205 automated
+packaging, and that's now down to items only a human can finish — see below). 209/209 automated
 tests passing in the fast subset (plus the real two-subprocess e2e test), ~84% overall coverage.
-Core game is fully playable end-to-end today, including both optional bonus AI brains.
+Core game is fully playable end-to-end today, including both optional bonus AI brains. Every
+source and test file in the repository is kept to ≤150 lines by convention (see `docs/architecture.md`
+§2) and the default pursuit/evasion algorithm was upgraded to a Bayes-optimal expected-distance
+policy (see "Newly closed" below).
 
 ## Phase board
 
@@ -31,14 +34,27 @@ Core game is fully playable end-to-end today, including both optional bonus AI b
 | 12 | CLI | 🟢 Done | 100% | `cli.py` | `peer` + `replay` + new `audit` subcommands |
 | 13 | GUI (live belief-heatmap view) + Replay Viewer | 🟡 Mostly done | 95% | `gui/live_view.py`, `gui/replay_viewer.py` | logic fully tested (replay viewer now also rejects a structurally-corrupt log with a clear error); live-view screenshot artifact for submission still pending |
 | 14 | Logging & config polish | 🟢 Done | 100% | `logging_setup.py` | secret-redaction filter tested |
-| 15 | Full test suite pass + coverage | 🟢 Done | 100% | `tests/` | 205 tests in the fast subset (+1 e2e), ~84% overall / 91–100% on `domain/` |
+| 15 | Full test suite pass + coverage | 🟢 Done | 100% | `tests/` | 209 tests in the fast subset (+1 e2e), ~84% overall / 91–100% on `domain/` |
 | 16 | Two-peer local E2E demo + scripts | 🟢 Done | 100% | `scripts/*.ps1`, `tests/e2e/` | real two-OS-process game, verified over real HTTP; fixed a real output-dir collision bug in the standalone demo scripts (see below) |
 | 17 | Documentation pass | 🟢 Done | 100% | `README.md`, `docs/*.md` | academic-report style, traceability matrix, assumptions log |
 | 18 | Final verification & submission packaging | 🟡 In Progress | ~80% | `docs/final_audit.md` | every remaining item now needs a human (real credentials, real roster, a policy decision) — see open items below |
 | 19 🎁 | Bonus: Reinforcement-learning brain (`strategy/qlearning.py`) | 🟢 Done | 100% | `strategy/qlearning.py` | tabular Q-learning, BONUS-001; opt-in via `[strategy]` config, never the default |
 | 20 🎁 | Bonus: LLM trash-talk / banter (`strategy/llm_bluff.py`) | 🟢 Done | 100% | `strategy/llm_bluff.py` | BONUS-002; `template` (default, offline) + `ollama` (local, zero-cost) providers implemented; `claude_api`/`claude_cli` deliberately left unimplemented (raises clearly) per A-005's no-default-spend policy |
 
-## Newly closed this session (2026-07-24, implementation pass)
+## Newly closed this session (2026-07-24, implementation pass + code-quality pass)
+
+- **Default algorithm upgraded** — `strategy/heuristic.py` no longer chases a single
+  argmax(belief) point guess. Both brains now minimize/maximize the *expected* Manhattan distance
+  over the full belief distribution (the Bayes-optimal single-step policy for that objective),
+  which fixes a real defect in the old heuristic (a degenerate tie-break at game start, before any
+  scent exists) and adds an interior-mobility tie-break for the thief and confidence-gated barrier
+  placement for the cop. 4 new tests lock in the specific fixed behaviors.
+- **150-line-per-file limit** — every source and test file in the repository was refactored to
+  stay at or under 150 lines. Seven `src/` modules (`orchestrator.py`, `peer_runtime.py`,
+  `domain/models.py`, `strategy/qlearning.py`, `strategy/llm_bluff.py`, `cli.py`,
+  `infra/tunnel.py`) and seven `tests/` modules were each split into cohesive sibling files; every
+  external-facing import path was preserved (verified by the full suite + mypy --strict + the real
+  e2e test after each split). See `docs/architecture.md` §2 for the resulting file map.
 
 Beyond the two bonus AI brains above, several concrete gaps and one real bug were closed:
 

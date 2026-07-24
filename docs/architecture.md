@@ -21,33 +21,47 @@ Companion to `docs/requirements_analysis.md` (requirement IDs referenced through
 
 ## 2. Package layout
 
+Every source file is kept to ≤150 lines by convention: any module that grows past that is split
+into cohesive sibling files (e.g. `orchestrator.py` + `orchestrator_turn.py` +
+`orchestrator_messages.py` + `orchestrator_types.py`), with the original filename kept as the
+stable public import surface wherever external code already depended on it. Test files follow the
+same rule — shared setup across split test files lives in a leading-underscore helper module
+(`_orchestrator_helpers.py` etc.) that pytest doesn't collect as a test file itself.
+
 ```
 src/police_thief/
 ├── domain/            # deterministic, no I/O, no network — unit-testable in isolation
-│   ├── board.py       #   grid, coordinates, barrier placement, capture/win rules   (FR-010..018, FR-020..021)
-│   ├── scent.py        #   pheromone emission/decay, belief-map update              (FR-030..032)
-│   ├── state_machine.py#   GamePhaseMachine + transition table                     (FR-052)
-│   ├── crypto.py       #   commit()/verify(), canonical JSON, nonce                 (FR-040..045)
-│   └── models.py       #   dataclasses: Move, Coordinate, GameConfig, Declaration…
+│   ├── board.py            #   grid, coordinates, barrier placement, capture/win rules   (FR-010..018, FR-020..021)
+│   ├── scent.py             #   pheromone emission/decay, belief-map update              (FR-030..032)
+│   ├── state_machine.py     #   GamePhaseMachine + transition table                     (FR-052)
+│   ├── crypto.py            #   commit()/verify(), canonical JSON, nonce                 (FR-040..045)
+│   ├── models.py            #   core value types: Role, Direction, Coordinate
+│   ├── game_config.py       #   config/game.json-shaped models (GameConfig et al.)       (NFR-005)
+│   └── rate_limiter_config.py #  RateLimiterGatekeeperConfig (split out of game_config.py)
 ├── strategy/
-│   ├── base.py         #   BrainBase / ThiefBrain / PoliceBrain ABCs               (FR-060..061)
-│   ├── heuristic.py     #  default Manhattan+belief-argmax brain                   (FR-032)
-│   ├── qlearning.py     #  optional RL brain                                       (BONUS-001)
-│   └── llm_bluff.py     #  text-only banter provider (template/ollama/claude_*)     (FR-062..064)
+│   ├── base.py              #   BrainBase / ThiefBrain / PoliceBrain ABCs               (FR-060..061)
+│   ├── heuristic.py         #   default brain: expected-distance-over-belief pursuit/evasion (FR-032)
+│   ├── qlearning.py + qlearning_core.py  # optional tabular RL brain                    (BONUS-001)
+│   └── llm_bluff.py + banter_base.py + banter_ollama.py  # text-only banter provider    (FR-062..064)
 ├── infra/
-│   ├── mcp_server.py    #  FastMCP tool exposure (this peer's server half)          (FR-050..051)
-│   ├── mcp_client.py    #  calls into the opponent's exposed tools                  (FR-050)
-│   ├── tunnel.py        #  ngrok/Localtonet lifecycle wrapper                       (FR-006)
-│   ├── gatekeeper.py     #  Quota Manager -> TokenBucket -> DOS Detector pipeline    (FR-055, NFR-006)
-│   ├── gmail_report.py   #  OAuth2 send-only Gmail reporting                        (FR-080..082)
-│   └── watchdog.py       #  heartbeat + deadline tracker                            (FR-053..054)
-├── orchestrator.py      #  Single Gateway: owns state machine, wires everything     (FR-052)
-├── config.py            #  loads+validates config/game.json + game.toml            (NFR-005, A-003, A-009)
-├── logging_setup.py      #  structured logging, no-secrets policy                  (NFR-004)
+│   ├── mcp_server.py        #  FastMCP tool exposure (this peer's server half)          (FR-050..051)
+│   ├── mcp_client.py        #  calls into the opponent's exposed tools                  (FR-050)
+│   ├── tunnel.py + tunnel_types.py  # ngrok/Localtonet lifecycle wrapper                (FR-006)
+│   ├── gatekeeper.py        #  Quota Manager -> TokenBucket -> DOS Detector pipeline     (FR-055, NFR-006)
+│   ├── gmail_report.py      #  OAuth2 send-only Gmail reporting                         (FR-080..082)
+│   ├── league_audit.py      #  games-played-count audit                                 (FR-083)
+│   ├── vcs.py                #  real git commit hash discovery                          (FR-087)
+│   └── watchdog.py          #  heartbeat + deadline tracker                             (FR-053..054)
+├── orchestrator.py + orchestrator_turn.py + orchestrator_messages.py + orchestrator_types.py
+│                       #  Single Gateway: owns state machine, wires everything          (FR-052)
+├── peer_runtime.py + peer_startup.py + peer_setup.py + peer_deliverables.py
+│                       #  turn loop / async wiring / sync helpers / end-of-game reporting
+├── config.py            #  loads+validates config/game.json + game.toml                (NFR-005, A-003, A-009)
+├── logging_setup.py      #  structured logging, no-secrets policy                      (NFR-004)
 ├── gui/
-│   ├── live_view.py      #  Tkinter live GUI: local belief heatmap + turn banner    (FR-070)
-│   └── replay_viewer.py  #  loads log, recomputes hashes, Verified OK / TAMPERED    (FR-071..072)
-└── cli.py                #  `python -m police_thief peer --role ...`, `replay ...`
+│   ├── live_view.py      #  Tkinter live GUI: local belief heatmap + turn banner        (FR-070)
+│   └── replay_viewer.py  #  loads log, recomputes hashes, Verified OK / TAMPERED        (FR-071..072)
+└── cli.py + cli_parser.py  # `python -m police_thief peer|replay|audit ...`
 
 config/
 ├── game.json             #  shared, signed, byte-identical on both sides           (NFR-008)
@@ -55,7 +69,7 @@ config/
 └── thief/game.toml        #  private, thief side only
 
 tests/
-├── unit/  protocol/  network/  integration/  e2e/
+├── unit/  network/  integration/  e2e/
 ```
 
 Dependency direction (enforced by import discipline + a lint rule, not just convention):

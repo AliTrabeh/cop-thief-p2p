@@ -407,9 +407,9 @@ doesn't enumerate.
 
 | ID | Requirement | Priority | Status | Ref |
 |---|---|---|---|---|
-| PRD-0290 | The default cop brain moves to minimize Manhattan distance to `argmax_s b(s)` (the believed most-likely thief cell). | Must | Done | README §4 |
-| PRD-0291 | The default cop brain places a cornering barrier instead of moving when the believed thief cell is adjacent. | Should | Done | README §4 |
-| PRD-0292 | The default thief brain moves to maximize the same Manhattan distance (pure evasion heuristic). | Must | Done | README §4 |
+| PRD-0290 | The default cop brain moves to minimize the *expected* Manhattan distance under the full belief distribution `E_{c~b}[dist(pos, c)]` (upgraded from a naive `argmax_s b(s)` point-target, which degenerated at game start). | Must | Done | strategy/heuristic.py |
+| PRD-0291 | The default cop brain places a cornering barrier instead of moving when the believed thief cell is adjacent **and** the belief there is genuinely concentrated (>1.5x a uniform guess) — never spent on a low-confidence read. | Should | Done | strategy/heuristic.py |
+| PRD-0292 | The default thief brain moves to maximize the same expected-distance objective (pure evasion heuristic), with a light interior-mobility tie-break among near-equal candidate moves. | Must | Done | strategy/heuristic.py |
 | PRD-0293 | The default heuristic is fully deterministic — the same belief state always produces the same move (no randomness). | Must | Done | strategy/heuristic.py |
 | PRD-0294 | The default heuristic never requires network access, model downloads, or external services to run. | Must | Done | README §4 |
 | PRD-0295 | The default heuristic is the out-of-the-box behavior with zero configuration required (works immediately after `uv sync`). | Must | Done | README §6 |
@@ -841,17 +841,34 @@ silently falling back or spending real API credits by default (A-005's no-defaul
 | PRD-0611 | The total requirement count in this document (611, as of the first revision) is expected to grow further as the project moves through Phase 18 and beyond — 500 was a floor, not a target. | Must | Done | this file |
 | PRD-0612 | The "recommended" two-terminal demo (`scripts/run_police.ps1`/`run_thief.ps1`) must not silently corrupt one side's deliverables when both are run with default arguments exactly as documented. | Must | Done | scripts/run_police.ps1, scripts/run_thief.ps1 |
 
+## 38. Competitive Algorithm Quality & Code-Size Discipline
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0613 | The default pursuit/evasion policy minimizes/maximizes the mathematically correct objective (expected distance under the full belief distribution) rather than a heuristic proxy (distance to a single point guess). | Must | Done | strategy/heuristic.py |
+| PRD-0614 | The algorithm upgrade is provably at least as good as the previous one in every case where the old heuristic already worked (a single sharply-peaked belief), and strictly better in the diffuse/degenerate cases it got wrong. | Must | Done | strategy/heuristic.py docstring |
+| PRD-0615 | The upgraded algorithm's specific behavioral fixes (center-seeking under uniform belief, confidence-gated barrier spend, interior-mobility tie-break) each have a dedicated regression test, not just an aggregate "it plays a game" check. | Must | Done | tests/unit/test_strategy_expected_distance.py |
+| PRD-0616 | Claims about the algorithm's strength are calibrated honestly: it is a well-motivated, tested improvement over a specific documented baseline, not a claim of game-theoretic optimality against an unknown adversary. | Must | Done | README, commit message |
+| PRD-0617 | Every source file in `src/` is kept to at most 150 lines by convention, to keep any single file reviewable at a glance. | Must | Done | docs/architecture.md §2 |
+| PRD-0618 | Every test file in `tests/` is kept to at most 150 lines by the same convention. | Must | Done | docs/architecture.md §2 |
+| PRD-0619 | Splitting a file for size never changes its external public API — every pre-existing `from police_thief.X import Y` call site continues to work unchanged after a split. | Must | Done | orchestrator.py, peer_runtime.py, domain/models.py, strategy/qlearning.py, strategy/llm_bluff.py, cli.py, infra/tunnel.py |
+| PRD-0620 | Where a file split would otherwise create a circular import (two halves each needing a type the other defines), the shared type is hoisted to a common ancestor module instead of faked with a `TYPE_CHECKING`-only cycle. | Must | Done | domain/models.py::_StrictConfigModel |
+| PRD-0621 | Where two split modules must reference each other's runtime type only for annotations (not at runtime), the reference is deferred via `TYPE_CHECKING` rather than restructured, since the two halves are genuinely one logical unit (e.g. an object and free functions that operate on it). | Should | Done | orchestrator_turn.py, orchestrator_messages.py, peer_startup.py |
+| PRD-0622 | Shared setup code needed by multiple split test files lives in a leading-underscore helper module that pytest does not collect as a test file itself. | Must | Done | tests/unit/_orchestrator_helpers.py, tests/unit/_tunnel_helpers.py, tests/unit/_config_fixtures.py, tests/integration/_two_peer_helpers.py |
+| PRD-0623 | Every file split is verified against the full test suite, `ruff format`/`check`, `mypy --strict`, and (for anything touching the peer runtime or orchestrator) the real two-subprocess e2e test before being committed. | Must | Done | this session's workflow |
+| PRD-0624 | The file-size convention is documented in the architecture doc, not just enforced silently, so a future contributor understands why a module looks unusually fragmented compared to a typical single-file design. | Should | Done | docs/architecture.md §2 |
+
 ---
 
-**Total: 612 PRD items** (PRD-0001–PRD-0612) across 37 sections. Status as of the 2026-07-24
-implementation pass: the large majority are **Done**, including both optional bonus brains (RL —
-Section 19, LLM banter — Section 20, both implemented and tested this session), FR-083's league
-audit, FR-087's real commit hash, and several robustness fixes (crashing-brain handling, config
-strictness, malformed-log handling, port-collision handling) plus one real bug discovered and fixed
-along the way (PRD-0612: a demo-script output-directory collision). The remaining honest gaps are
-now all in Section 36 (submission packaging — screenshots, a real Gmail send, the real team roster,
-the two-repo decision, and the final tag; all **Planned**/**Deferred** and all requiring a human,
-not more code) plus a small number of edge cases flagged **Not Verified** in Section 35. No item in
-this document was marked `Done` without a corresponding module, test, or manual-verification note
-backing it, matching this project's standing "no placeholder success claims" rule
-(`docs/final_audit.md` §17).
+**Total: 624 PRD items** (PRD-0001–PRD-0624) across 38 sections. Status as of the 2026-07-24
+implementation + code-quality pass: the large majority are **Done**, including both optional bonus
+brains (RL — Section 19, LLM banter — Section 20), FR-083's league audit, FR-087's real commit
+hash, several robustness fixes, the default algorithm's upgrade to an expected-distance policy
+(Section 38), the project-wide 150-line-per-file refactor (Section 38), and one real bug discovered
+and fixed along the way (PRD-0612: a demo-script output-directory collision). The remaining honest
+gaps are all in Section 36 (submission packaging — screenshots, a real Gmail send, the real team
+roster, the two-repo decision, and the final tag; all **Planned**/**Deferred** and all requiring a
+human, not more code) plus a small number of edge cases flagged **Not Verified** in Section 35. No
+item in this document was marked `Done` without a corresponding module, test, or
+manual-verification note backing it, matching this project's standing "no placeholder success
+claims" rule (`docs/final_audit.md` §17).

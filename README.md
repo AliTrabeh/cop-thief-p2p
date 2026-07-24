@@ -79,12 +79,23 @@ the full log through `gui/replay_viewer.py::verify_step`/`replay`, producing `Ve
 
 ## 4. Strategy: the default heuristic (and how to plug in your own)
 
-The shipped default (`strategy/heuristic.py`) is a deterministic Manhattan-distance heuristic over
-each agent's own belief map: the cop moves to **minimize** distance to `argmax_s b(s)` (and places
-a cornering barrier instead of moving, if the believed thief cell is adjacent); the thief moves to
-**maximize** the same distance (evasion). No reinforcement learning is used by default — the spec
-explicitly frames RL as one optional tool among several, not a requirement (`docs/requirements_analysis.md`
-§4, BONUS-001).
+The shipped default (`strategy/heuristic.py`) is a deterministic policy over each agent's own
+belief map: the cop moves to **minimize**, and the thief to **maximize**, the *expected* Manhattan
+distance under the full belief distribution `E_{c~b}[dist(pos, c)]` — the Bayes-optimal single-step
+action for that objective, not just distance to the single most-likely cell (`argmax_s b(s)`). That
+distinction matters most exactly when it's cheap to get right and costly to get wrong: at the start
+of a game, before any scent exists, belief is uniform and a plain argmax degenerately ties on the
+agent's own start cell; the expected-distance policy instead moves purposefully toward the board's
+center (minimizing/maximizing average distance to every cell), and converges to the same behavior
+as a simpler heuristic once belief sharpens around the true position later in the game. The cop
+additionally only spends a barrier once belief at the target cell is genuinely concentrated (not a
+near-uniform guess), and the thief breaks near-ties in favor of staying away from board edges/
+corners (more future escape routes against a cop trying to corner it). See
+`strategy/heuristic.py`'s module docstring for the full reasoning and `tests/unit/test_strategy_expected_distance.py`
+for the regression tests that lock in each fix. No reinforcement learning is used by default — the
+spec explicitly frames RL as one optional tool among several, not a requirement
+(`docs/requirements_analysis.md` §4, BONUS-001) — though a tabular Q-learning brain is available as
+an opt-in, never-the-default alternative (`strategy/qlearning.py`).
 
 **Pluggability.** `config/<role>/game.toml → [strategy]` points at any `package.module:Class`
 subclassing `BrainBase` (see `docs/protocol.md` §6); the loader
@@ -122,7 +133,11 @@ docs/              # requirements, architecture, protocol, plan, testing strateg
                    # traceability matrix, progress log, final audit, status board, PRD
 ```
 
-See `docs/progress.md` for the full, dated history of every implementation part.
+Every module above with more than ~150 lines' worth of logic is actually split across several
+same-purpose files (e.g. `orchestrator.py` + `orchestrator_turn.py` + `orchestrator_messages.py` +
+`orchestrator_types.py`) — a project-wide 150-line-per-file convention. See `docs/architecture.md`
+§2 for the exact current file map and `docs/progress.md` for the full, dated history of every
+implementation part.
 
 **Two more planning docs worth knowing about:** `docs/STATUS.md` gives a one-page, phase-by-phase
 status board (18 implementation phases + 2 bonus phases, done/in-progress/not-started at a glance)

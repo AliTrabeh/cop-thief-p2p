@@ -573,3 +573,61 @@ count, new `audit` command), `docs/final_audit.md` (§1, §9, §20, closing summ
 split (A-008, needs a decision), submission screenshots (needs a real display to capture from), a
 real non-draft Gmail send (needs live OAuth credentials and consent), the real team roster (needs
 actual student identifiers), and tagging `v1.0-submission` once those are done.
+
+## 2026-07-24 — Algorithm upgrade + project-wide 150-line-per-file refactor
+
+**Goal**: two follow-up requests in the same session — make the default cop/thief algorithm as
+strong as reasonably possible (this project competes against other students' submissions), and
+keep every source/test file at or under 150 lines for reviewability.
+
+**Algorithm upgrade** (`strategy/heuristic.py`): replaced "chase `argmax_s b(s)`" with minimizing/
+maximizing the *expected* Manhattan distance over the full belief distribution — the Bayes-optimal
+single-step policy for that objective. This is a real, provable fix, not just more code: the old
+heuristic degenerately tied on the agent's own start cell under the fully uniform belief that
+exists before any scent is deposited (documented in the old code's own comments and tests), and the
+new policy correctly moves toward the board's center of mass in that regime instead. Added a
+confidence gate on the cop's barrier spend (never corners on a near-uniform guess) and an
+interior-mobility tie-break for the thief (prefers staying away from edges/corners when otherwise
+tied). 4 new regression tests (`test_strategy_expected_distance.py`) lock in each specific fix; all
+12 pre-existing strategy tests still pass unchanged, since the new policy's directional predictions
+agree with the old one whenever belief is a single clean deposit.
+
+**150-line-per-file refactor**: 7 `src/` files (`orchestrator.py` 323→4 files, `peer_runtime.py`
+274→4 files, `domain/models.py` 200→3 files, `strategy/qlearning.py` and `strategy/llm_bluff.py`
+173 each→2 files each, `cli.py` and `infra/tunnel.py` ~158 each→2 files each) and 7 `tests/` files
+(156-203 lines each) were each split into cohesive sibling files. Two split strategies were used
+depending on external fan-in: for low-fan-in modules, helper code was extracted into new files with
+the original filename kept as a thin re-exporting public surface (zero call-site changes needed);
+for `domain/models.py` specifically (imported by ~24 files), the config-shaped models were
+genuinely moved to `domain/game_config.py` and every import site updated to match which module
+actually owns each type, since a re-export shim would have created a real circular import
+(`game_config.py` needs `Role`/`Coordinate` from `models.py`, and a shim `models.py` would need to
+import back from `game_config.py`). `RateLimiterGatekeeperConfig` was split out a second level for
+the same reason its own `_StrictConfigModel` base had to be hoisted into `domain/models.py`.
+
+Two genuine circular-import/runtime bugs were hit and fixed during this pass, not just theoretical
+risks: (1) a mypy "reading deleted variable" error from reusing an `except ... as exc:` name later
+in the same function as a plain variable (fixed by renaming); (2) `peer_runtime.py`'s port-check
+logic initially tried to catch a bind failure via `server_task.done()` after an `await
+asyncio.sleep()`, but uvicorn's own bind-failure path calls `sys.exit()` inside the server's
+asyncio task, and asyncio specially re-raises `SystemExit`/`KeyboardInterrupt` straight out of the
+event loop's dispatch step — bypassing the task's stored exception entirely and crashing the whole
+`run_peer` call with a bare `SystemExit: 3`. This had already been fixed with a proactive
+`socket.bind()` probe in an earlier pass of this same session; the refactor preserved that fix by
+moving it, unchanged, into the new `peer_setup.py`.
+
+**Tests executed**: full `ruff format`/`ruff check`/`mypy --strict` clean after every single split
+(verified incrementally, not just at the end); the fast test subset (`pytest -m "not e2e"`) stayed
+at 209 passing throughout (same count before and after — pure reorganization, no coverage lost or
+duplicated); the real two-subprocess e2e test was re-run after the peer_runtime/domain.models/
+tunnel splits specifically (the ones touching what that test actually exercises) and stayed green
+each time, ~90-100s per run.
+
+**Docs updated**: `docs/architecture.md` §2 (full file map showing every split), `docs/STATUS.md`,
+`docs/PRD.md` (updated PRD-0290/0291/0292 to describe the new algorithm; added Section 38 with 12
+new items covering both the algorithm-quality and code-size-discipline work; total now 624 items),
+`README.md` §4 (rewritten to explain the algorithm change and why it's a real fix, not just churn)
+and §5 (file-structure note).
+
+**Remaining genuinely open items**: unchanged from the previous entry — all in Phase 18
+(submission packaging), all requiring a human, not more code.
