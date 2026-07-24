@@ -631,3 +631,57 @@ and §5 (file-structure note).
 
 **Remaining genuinely open items**: unchanged from the previous entry — all in Phase 18
 (submission packaging), all requiring a human, not more code.
+
+## 2026-07-25 — Game-outcome check + strict full-repository structural audit
+
+**Game-outcome check** (requested before the audit): ran the single-terminal demo twice with fresh
+game IDs. Both games reached **survival** (the thief evaded capture for the full 35-move limit) —
+`cop_score=5, thief_score=10` both times, final positions `(5,5)`/`(6,6)` and similar. This is
+current, honest self-play behavior with the upgraded expected-distance heuristic on both sides, not
+a bug: `Replay of ...: Verified OK` on both runs, confirming the games themselves were legitimate
+and fully verified, just outcomes where the evader won under the current default algorithm. Scratch
+log directories from these two runs were deleted afterward (not committed).
+
+**Structural audit** — explicit ask to be strict and thorough. Checked, in order: file inventory
+(tracked vs. `git status --ignored`, largest tracked files, `.git` size), dead code (`TODO`/`FIXME`
+grep, commented-out-code grep, debug-print grep, `noqa`/`type: ignore` justification review, every
+symbol defined in the 150-line-refactor's new files checked for at least one real usage elsewhere,
+duplicate-top-level-symbol-name check across all of `src/`), a from-scratch full verification
+(`uv sync`, `ruff format --check`, `ruff check`, `mypy --strict`, the fast test subset with
+coverage, the real e2e test, and — beyond what's normally run — every one of the 46 `src/`
+modules individually imported in isolation to positively rule out any circular-import risk beyond
+what the test suite happens to exercise), module-boundary verification (confirmed `domain/` has
+zero non-stdlib imports, `strategy/` imports only `domain` + its own submodules matching its own
+`__init__.py` docstring claim, the one `infra → orchestrator` dependency in `reporting.py` is a
+pre-existing one-directional "diamond" shape not a cycle), config-file validation against the live
+schema, a secrets/credentials sweep (working tree + full git history), and a documentation
+cross-consistency pass (every `` `path/to/file.py` `` reference across `README.md`+`docs/*.md`
+checked to actually exist; every doc's claimed test count / source-file count cross-checked against
+reality).
+
+**Findings**: zero functional bugs, zero dead code, zero circular imports, zero secrets, zero stray
+files, zero broken file-path references. The one category of real finding was **documentation
+staleness** — three docs hadn't been updated after the algorithm-upgrade/refactor pass:
+- `docs/testing_strategy.md` was badly out of date (a pre-implementation planning artifact that
+  was never synced to reality): it described a `tests/protocol/` directory that was never actually
+  built that way, a `test_logging_redaction.py` file that doesn't exist (the real file is
+  `test_logging_setup.py`), and its unit-test table was missing roughly 20 files added since it was
+  last touched. Rewritten from scratch against the actual current `tests/` tree.
+- `docs/final_audit.md` and `docs/PRD.md` (PRD-0500) both still said "28 source files" (pre-split
+  count) instead of the current 46, and `final_audit.md`/`README.md` both still said "206 tests"
+  instead of the current 210 (209 fast + 1 e2e). All fixed to the verified-fresh actual numbers.
+- One accepted false positive: `docs/progress.md` itself references `tests/unit/conftest.py`, a
+  path that hasn't existed since an early part of the project (it was moved to `tests/conftest.py`)
+  — left alone deliberately, since `progress.md` is an immutable dated historical log describing
+  what was true *at that point in the project*, not a living reference doc.
+
+One additional (non-blocking) observation, not changed: four `# noqa: S603`/`BLE001`/`ANN001,
+ANN201` comments in `src/` reference ruff rule codes that aren't in `pyproject.toml`'s
+`[tool.ruff.lint] select` list, so they're currently inert (harmless, but not actively enforced).
+Verified the underlying code is already compliant with what those rules would check if enabled;
+left as defensive/forward-looking documentation rather than either stripping the comments or adding
+`ANN`/`S`/`BLE` project-wide (which would require annotating or per-file-ignoring a large number of
+test functions for a purely cosmetic gain, disproportionate to the actual risk).
+
+**Verdict**: project structure is clean and built as required. No code changes were needed as a
+result of this audit — only documentation corrections.

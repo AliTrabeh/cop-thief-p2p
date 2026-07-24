@@ -212,7 +212,7 @@ uv run python -m police_thief --help
 
 ## 7. Testing strategy summary
 
-206 tests across unit / network / integration / e2e (`docs/testing_strategy.md` for the full
+210 tests across unit / network / integration / e2e (`docs/testing_strategy.md` for the full
 breakdown): deterministic domain logic tested without I/O; FastMCP networking tested over its real
 in-process transport (genuine protocol round trips, no sockets needed in CI); two full
 two-orchestrator games (default heuristic brains, and separately the bonus Q-learning brains) tested

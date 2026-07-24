@@ -1,8 +1,9 @@
 # Final Audit
 
-Snapshot as of 2026-07-24, updated after a second implementation pass that closed FR-083, FR-087,
-and both bonus AI brains (see `docs/progress.md` for the full dated history). This audit follows
-the 20-point checklist from the working instructions.
+Snapshot as of 2026-07-25, updated after a third pass (the default algorithm's expected-distance
+upgrade, a project-wide 150-line-per-file refactor, and this strict structural audit) on top of the
+second pass that closed FR-083, FR-087, and both bonus AI brains (see `docs/progress.md` for the
+full dated history). This audit follows the 20-point checklist from the working instructions.
 
 ## 1. Requirement coverage
 
@@ -70,7 +71,8 @@ project has zero outstanding formatting diffs).
 
 ## 8. Type checking passes or documented justified exceptions exist
 
-`uv run mypy src` — clean, 28 source files, strict mode, zero errors. One documented exception:
+`uv run mypy src` — clean, 46 source files (up from 28 before the 150-line-per-file split — same
+code, more, smaller files), strict mode, zero errors. One documented exception:
 `[[tool.mypy.overrides]]` for `googleapiclient`/`google.oauth2`/`google.auth` (no upstream
 `py.typed` marker), plus one inline `# type: ignore[no-untyped-call]` on the one untyped Google API
 call site (`infra/gmail_report.py::get_gmail_service`). `mypy` is intentionally scoped to `src/`
@@ -79,10 +81,12 @@ only (not `tests/`) — strict untyped-def checking on test functions isn't a us
 
 ## 9. Tests pass
 
-`uv run pytest -q` — 206 tests, whole suite including the real-two-process e2e test (which was
-re-run twice more after touching `peer_runtime.py` in the follow-up hardening pass), all passing
-(verified multiple times across both implementation passes, most recently just before this
-revision was written).
+`uv run pytest -q` — 210 tests (209 in the fast subset + the real-two-process e2e test), all
+passing. Re-verified fresh as part of this structural-audit pass: `uv sync` from scratch, every
+module in `src/police_thief` imported individually with no failures (46/46), `ruff format --check`/
+`ruff check`/`mypy --strict` all clean, and the e2e test re-run standalone and confirmed green
+(observed runtime varies 65-135s depending on whether the game ends in an early capture or plays
+out to the full `max_moves` survival case).
 
 ## 10. Two real peers communicate locally
 
@@ -143,7 +147,11 @@ complete").
 ## 18. No dead files or obsolete duplicate implementations remain
 
 The original PyCharm placeholder (`main.py`) was removed in Part 1 once `src/police_thief` existed.
-No duplicate/superseded modules remain from this session's development.
+No duplicate/superseded modules remain from this session's development. Re-verified explicitly in
+the 2026-07-25 structural audit: every symbol defined in the files created by the 150-line-per-file
+split was checked to have at least one real usage outside its own definition (none orphaned), no
+top-level symbol name is defined more than once anywhere in `src/`, and `git status --ignored`
+shows nothing untracked except the expected caches/venv/IDE folders and the gitignored lecturer PDF.
 
 ## 19. The project is understandable to the lecturer
 
