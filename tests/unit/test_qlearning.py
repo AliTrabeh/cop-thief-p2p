@@ -11,7 +11,8 @@ from police_thief.domain.board import BoardState
 from police_thief.domain.models import Coordinate, Role
 from police_thief.domain.scent import ScentField
 from police_thief.strategy.base import BarrierAction, MoveAction, build_belief_view
-from police_thief.strategy.qlearning import QLearningPoliceBrain, QLearningThiefBrain, _state_for
+from police_thief.strategy.qlearning import QLearningPoliceBrain, QLearningThiefBrain
+from police_thief.strategy.qlearning_core import state_for
 
 
 def test_thief_brain_always_returns_a_legal_action(game_config):
@@ -72,7 +73,7 @@ def test_epsilon_zero_is_greedy_over_seeded_q_values(game_config):
     view = build_belief_view(board, scent, Role.POLICE)
 
     brain = QLearningPoliceBrain(epsilon=0.0, seed=1)
-    state = _state_for(view, board.thief_position)
+    state = state_for(view, board.thief_position)
     # Rig the table so "E" (toward the thief, which is south-east of the cop) wins outright.
     brain._q[state] = {"N": -10.0, "S": 0.0, "E": 10.0, "W": -10.0, "STAY": -10.0}
     action = brain.decide(view)
@@ -94,7 +95,7 @@ def test_q_values_update_after_a_second_decision(game_config):
     brain = QLearningPoliceBrain(epsilon=0.0, seed=1)
 
     view1 = build_belief_view(board, scent, Role.POLICE)
-    state1 = _state_for(view1, board.thief_position)
+    state1 = state_for(view1, board.thief_position)
     brain._q[state1] = {"E": 5.0}  # rig the first choice to be deterministic ("E" wins)
 
     action1 = brain.decide(view1)
@@ -137,7 +138,7 @@ def test_thief_state_discretization_uses_signed_deltas_and_capped_distance(game_
     target = Coordinate(row=5, col=5)
     scent = ScentField(config=game_config)
     view = build_belief_view(board, scent, Role.THIEF)
-    state = _state_for(view, target)
+    state = state_for(view, target)
     assert state[0] == 1  # target is east (higher col)
     assert state[1] == 1  # target is south (higher row)
     assert state[2] == 3  # capped at _DISTANCE_CAP even though true distance is 10
