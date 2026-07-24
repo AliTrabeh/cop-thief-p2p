@@ -437,7 +437,214 @@ doesn't enumerate.
 | PRD-0312 | The pluggable strategy mechanism is documented with a worked example (exact config syntax) in `docs/protocol.md` §6. | Should | Done | protocol.md §6 |
 | PRD-0313 | Pluggability is exercised by at least one test that supplies a genuinely custom (non-default) `BrainBase` subclass and confirms it's actually invoked, not silently ignored. | Must | Done | tests/unit/test_strategy.py |
 
+## 19. Bonus: Reinforcement-Learning Brain
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0314 | An optional `strategy/qlearning.py` brain may implement tabular or function-approximation RL over the belief-map state space. | Bonus | Not Started | BONUS-001 |
+| PRD-0315 | If built, the RL brain must satisfy the same `BrainBase` contract as the heuristic brain (drop-in replaceable). | Bonus | Not Started | BONUS-001 |
+| PRD-0316 | If built, the RL brain's training process must be reproducible and documented (seed, hyperparameters, training script). | Bonus | Not Started | — |
+| PRD-0317 | If built, a trained model artifact must be small enough to commit to the repo or trivially regeneratable, not a multi-GB blob. | Bonus | Not Started | — |
+| PRD-0318 | If built, the RL brain must still only ever consume the same `BeliefView` input as the heuristic brain — no special-cased access to true board state. | Bonus | Not Started | FR-005 |
+| PRD-0319 | If built, the RL brain's decision latency must stay well within the per-turn timeout even during a real two-process game. | Bonus | Not Started | — |
+| PRD-0320 | If built, an RL-vs-heuristic benchmark (win rate over N games) should be documented to demonstrate the RL brain adds value. | Bonus | Not Started | — |
+| PRD-0321 | The RL brain is explicitly optional per the spec — its absence must never block core submission requirements. | Must | Done | requirements_analysis.md §4 |
+| PRD-0322 | If built, RL training/inference dependencies (e.g. `numpy`, a small RL library) must be added to `pyproject.toml` only under an optional extras group, not bloating the default install. | Bonus | Not Started | — |
+| PRD-0323 | If not built, this is explicitly documented as "Not Started" (not silently omitted) in `docs/STATUS.md`, `docs/requirements_traceability.md`, and `README.md`'s Known Limitations. | Must | Done | STATUS.md |
+| PRD-0324 | If built, unit tests for the RL brain follow the same offline/no-I/O-dependency pattern as the rest of `strategy/`. | Bonus | Not Started | — |
+| PRD-0325 | The decision to build (or not build) the RL brain is a product/scope decision, not silently deferred without the user's awareness. | Must | Done | — |
+
+## 20. Bonus: LLM Trash-Talk / Banter
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0326 | An optional `strategy/llm_bluff.py` module may generate free-text banter/trash-talk shown alongside a move, never used to decide the move itself. | Bonus | Not Started | FR-061 |
+| PRD-0327 | The `[llm]` config section (`model`, `step_deadline_seconds`) and `[trash_talk]` config section (`provider`) already exist and default to `template` (zero tokens, offline). | Must | Done | A-005 |
+| PRD-0328 | If built, banter generation must respect `hint_max_words` so output can't balloon into an unbounded wall of text. | Bonus | Not Started | FR-064 |
+| PRD-0329 | If built, banter generation must have a hard `step_deadline_seconds` timeout so a slow/unreachable LLM provider can never stall the game loop. | Bonus | Not Started | FR-062 |
+| PRD-0330 | If built, at minimum a `template` provider (canned phrases, zero cost, offline) must remain the default so the product never requires paid API credits out of the box. | Must | Done | A-005 |
+| PRD-0331 | If built, an `ollama` provider option supports a fully local/offline LLM with no per-token cost. | Bonus | Not Started | — |
+| PRD-0332 | If built, a `claude_api`/`claude_cli` provider option is available but never enabled by default, per the user's standing instruction to avoid consuming Anthropic API credits unless explicitly required. | Bonus | Not Started | A-005 |
+| PRD-0333 | If built, `token_budget_per_series` (already present in config, default 200000) caps total LLM spend across a league series regardless of provider. | Should | Partial | config/game.json |
+| PRD-0334 | If built, banter failures (LLM provider error/timeout) degrade gracefully to no-banter, never to a crashed turn or technical loss. | Must | Not Started | — |
+| PRD-0335 | If built, banter content must never leak information the emitting agent shouldn't reveal (true position, unrevealed move) — a content-safety boundary distinct from the game-legality boundary. | Must | Not Started | — |
+| PRD-0336 | If not built, this is explicitly documented as "Not Started" everywhere it's tracked (STATUS.md, traceability matrix, README), matching the honesty standard applied to the RL brain. | Must | Done | STATUS.md |
+| PRD-0337 | If built, unit tests mock the LLM provider entirely — no real API calls in the automated test suite. | Bonus | Not Started | testing_strategy.md |
+| PRD-0338 | If built, the banter feature is fully optional at the config level (`provider` can be left at `template` with zero behavior change to core gameplay). | Must | Done (config exists) | A-005 |
+| PRD-0339 | If built, banter output is included in the live GUI / logs distinctly from move data, clearly labeled as flavor text. | Bonus | Not Started | — |
+| PRD-0340 | The decision to leave LLM banter unimplemented in the current submission is a deliberate, documented cost/scope trade-off, not an oversight. | Must | Done | README §9 |
+
+## 21. Configuration Management
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0341 | A shared, byte-identical `config/game.json` is loaded and validated by both peers (`load_game_config`). | Must | Done | NFR-005 |
+| PRD-0342 | A private, per-role `config/<role>/game.toml` is loaded and validated separately per peer (`load_peer_config`). | Must | Done | NFR-005 |
+| PRD-0343 | `shared_config_hash` lets both peers cryptographically confirm they're using the exact same shared ruleset before playing. | Must | Done | NFR-008 |
+| PRD-0344 | Config loading fails with a clear, explicit error message on a missing required field — never leaks a raw `KeyError` to the end user. | Must | Done | implementation_plan.md Part 3 |
+| PRD-0345 | Loading the book's own transcribed example JSON/TOML round-trips cleanly into typed `GameConfig`/`PeerConfig` objects. | Must | Done | tests/unit/test_config.py |
+| PRD-0346 | A hash mismatch between two copies of `game.json` is detected, not silently ignored, before a game starts. | Must | Done | implementation_plan.md Part 3 |
+| PRD-0347 | All config values use `pathlib.Path` where they represent filesystem locations, never raw string path concatenation. | Must | Done | NFR-002 |
+| PRD-0348 | Config validation rejects a barrier count inconsistent with `grid_size` (can't exceed total board cells) at load time. | Should | Done | A-009 |
+| PRD-0349 | Config validation rejects out-of-bounds `cop_start`/`thief_start` coordinates for the configured `grid_size` at load time. | Must | Done | A-009 |
+| PRD-0350 | Config supports overriding `[network] → my_port` / `opponent_url` independently per role, enabling both localhost multi-port and remote-tunnel setups from the same schema. | Must | Done | config/police/game.toml |
+| PRD-0351 | `[email] → recipient`/`mode` config controls the Gmail reporting destination and safety mode (`draft` vs `send`) per peer. | Must | Done | FR-080 |
+| PRD-0352 | `[tunnel] → provider`/`manual_public_url` config controls tunneling behavior per peer without code changes. | Must | Done | FR-006 |
+| PRD-0353 | `[strategy] → police_class`/`thief_class` (optional) lets a peer point at a custom brain without touching any other config section. | Must | Done | FR-060 |
+| PRD-0354 | `[llm]`/`[trash_talk]` sections exist with safe, zero-cost defaults even though the feature they configure isn't fully implemented yet. | Should | Done | A-005 |
+| PRD-0355 | Peer identity fields (`group_name`, `group_id`, `sub_game_number`, `members`, `repos`) are structured, typed config, not free-text notes. | Must | Done | FR-088 |
+| PRD-0356 | Config schema versions (`game.json` "1.2", peer `game.toml` "1.10") are tracked so future format changes are detectable. | Should | Done | config/game.json |
+| PRD-0357 | No secrets (API keys, OAuth tokens) are ever stored in `config/game.json` or `config/<role>/game.toml` — those live in gitignored files (`credentials.json`, `token.json`). | Must | Done | NFR-004, .gitignore |
+| PRD-0358 | Config loading has zero network I/O — purely reads local files, so it can be unit tested without any server running. | Must | Done | NFR-001 |
+| PRD-0359 | Default config values, where sensible, match the exact numbers in the lecturer's own mandatory-parameter tables (grid size, scoring, pheromone, network/league). | Must | Done | A-001, A-002, A-004 |
+| PRD-0360 | A single documented example config (in the repo, `config/`) is real, runnable configuration — not just a schema reference buried in docs. | Must | Done | README §5 |
+| PRD-0361 | Config module (`config.py`) is fully covered by unit tests including both valid and multiple distinct invalid fixtures. | Must | Done | tests/unit/test_config.py |
+| PRD-0362 | Changing any single mandatory parameter (e.g. `grid_size`) requires editing exactly one file (`config/game.json`), never a code change. | Must | Done | config.py |
+
+## 22. CLI & Usability
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0363 | `python -m police_thief --help` prints usable top-level usage text. | Must | Done | FR-002 |
+| PRD-0364 | `python -m police_thief peer --role police|thief` starts a peer process for the given role. | Must | Done | FR-002 |
+| PRD-0365 | `python -m police_thief peer --gui` optionally launches the live belief-heatmap view alongside the peer process. | Should | Done | FR-070 |
+| PRD-0366 | `python -m police_thief replay --log <path>` runs the Replay Viewer against a produced log file. | Must | Done | FR-071 |
+| PRD-0367 | Every subcommand has its own `--help` text (`peer --help`, `replay --help`). | Should | Done | final_audit.md "Exact commands used" |
+| PRD-0368 | Invalid CLI arguments produce a clean, human-readable error, never a raw Python stack trace, unless a `--debug` flag is passed. | Must | Done | implementation_plan.md Part 12 |
+| PRD-0369 | A scripted local CLI run reliably produces all four JSON deliverables in `logs/<game-id>/`. | Must | Done | implementation_plan.md Part 12 |
+| PRD-0370 | The CLI exits with a distinct, correct process exit code on success vs. failure, suitable for scripting/CI. | Should | Partial | cli.py |
+| PRD-0371 | The CLI never requires interactive input mid-run (fully scriptable/non-interactive once launched with its arguments). | Must | Done | cli.py |
+| PRD-0372 | PowerShell demo scripts (`run_police.ps1`, `run_thief.ps1`, `run_demo.ps1`, `run_tests.ps1`) wrap the CLI for one-command demo/test runs on Windows. | Must | Done | TEST-007 |
+| PRD-0373 | `run_demo.ps1` runs both peers as background jobs, waits for completion, and automatically runs the Replay Viewer on the resulting log. | Should | Done | README §6 |
+| PRD-0374 | `run_tests.ps1` supports a fast default mode (skips the ~1-minute real-subprocess e2e test) and a `-Full` mode that includes it. | Should | Done | README §6 |
+| PRD-0375 | Every command documented in `README.md` §6 has actually been run and verified during development, not just written speculatively. | Must | Done | final_audit.md §15 |
+| PRD-0376 | The CLI's role selection (`--role police|thief`) is validated against the two known roles only, rejecting typos with a clear message. | Must | Done | cli.py |
+| PRD-0377 | The CLI is the single entry point for all documented user-facing operations — no separate undocumented scripts are required for the core demo. | Must | Done | README §6 |
+
+## 23. Live GUI / Belief Heatmap
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0378 | A Tkinter-based live view renders the local peer's own belief-map heatmap in real time as the game progresses. | Must | Done | FR-070 |
+| PRD-0379 | The heatmap is strictly "local-truth-only" — it shows only what that peer's own agent could actually know, never the opponent's true position. | Must | Done | FR-005, FR-070 |
+| PRD-0380 | `render_grid` and `belief_to_color` are pure, independently unit-testable rendering-logic functions, separated from the Tkinter main loop. | Must | Done | tests/unit/test_live_view_render.py |
+| PRD-0381 | The rendering-logic tests run headless (no display needed) in CI. | Must | Done | tests/unit/test_live_view_render.py |
+| PRD-0382 | A turn banner (`turn_banner_*`) shows the current turn number / phase / last outcome in the live view. | Should | Done | gui/live_view.py |
+| PRD-0383 | The live view is opt-in via `--gui`, never forced on for headless/CI/automated runs. | Must | Done | FR-070 |
+| PRD-0384 | The live GUI updates without blocking or stalling the underlying game loop / network I/O. | Must | Done | peer_runtime.py |
+| PRD-0385 | The live GUI window is cleanly destroyed as part of the peer's `finally`-block teardown on any exit path. | Must | Done | NFR-003 |
+| PRD-0386 | The color mapping from belief intensity to visual color is a documented, deterministic formula (not an arbitrary/undocumented gradient). | Should | Done | gui/live_view.py |
+| PRD-0387 | The agent's own current position and any placed barriers are visually distinguishable from belief-intensity cells in the same view. | Should | Partial | gui/live_view.py |
+| PRD-0388 | A real widget smoke test has been manually performed (needs a real display, so it's not part of automated CI, but has been verified at least once). | Should | Done | requirements_traceability.md FR-070 |
+| PRD-0389 | The live-view heatmap screenshot required for the submission checklist (Appendix C Table 6) has not yet been captured as an artifact, though the functionality works. | Must | Planned | final_audit.md §20 |
+| PRD-0390 | The GUI module has no impact on headless test-suite runtime (its logic-only parts are covered; the Tkinter loop itself is excluded from CI). | Should | Done | testing_strategy.md |
+| PRD-0391 | The live view degrades gracefully (or is simply skipped) on a machine with no display available, when `--gui` isn't passed. | Must | Done | cli.py |
+| PRD-0392 | Live-view rendering never crashes the peer process on an edge-case belief state (all-zero, single-peak, fully saturated). | Should | Done | tests/unit/test_live_view_render.py |
+
+## 24. Replay Viewer & Verification
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0393 | `gui/replay_viewer.py` loads a produced game log (`load_log`) and replays it move by move. | Must | Done | FR-071 |
+| PRD-0394 | `verify_step` independently re-derives and checks the commit hash for each individual step in the log. | Must | Done | FR-045, FR-071 |
+| PRD-0395 | `replay`/`verify_log_file` runs the full log through verification and produces a single terminal `Verified OK` or `TAMPERED` banner. | Must | Done | FR-071 |
+| PRD-0396 | A hand-crafted tampered-log fixture is correctly and reliably flagged `TAMPERED`. | Must | Done | tests/unit/test_replay_viewer.py |
+| PRD-0397 | A genuine, untampered log produced by a real game is correctly flagged `Verified OK`. | Must | Done | tests/unit/test_replay_viewer.py, integration test |
+| PRD-0398 | The Replay Viewer is runnable as a documented CLI subcommand (`python -m police_thief replay --log <path>`), not just an internal function. | Must | Done | FR-071 |
+| PRD-0399 | Replay verification requires no network access — it works entirely offline against a saved log file. | Must | Done | domain package boundary |
+| PRD-0400 | Replay verification is deterministic — running it twice on the same log always produces the same verdict. | Must | Done | gui/replay_viewer.py |
+| PRD-0401 | The Replay Viewer's `Verified OK` screenshot required for the submission checklist hasn't yet been captured as an artifact, though the underlying function is fully tested. | Must | Planned | final_audit.md §20 |
+| PRD-0402 | The Replay Viewer is exercised (not just unit tested in isolation) by the full integration test that plays a real two-orchestrator game and then verifies its own output log. | Must | Done | tests/integration/test_two_peer_game.py |
+| PRD-0403 | Replay verification checks every committed field independently (state, move, intent, nonce), matching the granularity of the crypto module's own tamper tests. | Must | Done | tests/unit/test_replay_viewer.py |
+| PRD-0404 | The Replay Viewer can be run by a third party (e.g. the lecturer) against a log file they didn't produce themselves, using only the documented CLI command. | Must | Done | README §6 |
+| PRD-0405 | A malformed/corrupted (not just tampered-but-well-formed) log file produces a clear error from the Replay Viewer, not a crash. | Should | Partial | gui/replay_viewer.py |
+| PRD-0406 | The Replay Viewer's pass/fail verdict is unambiguous in its printed output (no case where the result is unclear to a human reader). | Must | Done | gui/replay_viewer.py |
+| PRD-0407 | Replay Viewer logic has no GUI/display dependency of its own (distinct from the live GUI module), so it runs in any environment including CI. | Must | Done | tests/unit/test_replay_viewer.py |
+
+## 25. Logging & Observability
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0408 | Structured logging is configured centrally (`logging_setup.py::configure_logging`), not ad hoc `print()` calls scattered through the code. | Must | Done | NFR-004 |
+| PRD-0409 | A `RedactionFilter` strips or masks secret-looking values (credentials, tokens, nonces-before-reveal) from all log output. | Must | Done | NFR-004 |
+| PRD-0410 | A negative test asserts log output never contains the literal substrings `credentials`, `token`, or a not-yet-revealed nonce. | Must | Done | tests/unit/test_logging_setup.py |
+| PRD-0411 | Log verbosity is controllable (at minimum via config/CLI flags), so a debug run can get more detail without code changes. | Should | Done | logging_setup.py |
+| PRD-0412 | `get_logger` provides a consistent, named-logger pattern used uniformly across `domain/`, `infra/`, `strategy/`, and `gui/`. | Should | Done | logging_setup.py |
+| PRD-0413 | Log records include enough context (game ID, role, turn number) to reconstruct a timeline after the fact without cross-referencing multiple files. | Should | Done | orchestrator.py |
+| PRD-0414 | Logging never blocks or measurably slows the real-time game loop (no synchronous remote log shipping in the default config). | Must | Done | logging_setup.py |
+| PRD-0415 | Logging failures (e.g. disk full) degrade gracefully and never crash the game itself. | Should | Not Verified | — |
+| PRD-0416 | Log files are written under the gitignored `logs/` directory, never accidentally committed. | Must | Done | .gitignore |
+| PRD-0417 | The redaction filter is itself unit-tested with deliberately planted secret-like strings to confirm it actually catches them (not just a theoretical guarantee). | Must | Done | tests/unit/test_logging_setup.py |
+| PRD-0418 | Logging configuration is itself part of the standard config-loading path, not a separate manual setup step. | Should | Done | logging_setup.py |
+| PRD-0419 | Every module that could reasonably need a log line (networking, crypto failures, state transitions, rate-limit rejections) actually has one at an appropriate level. | Should | Done | — |
+| PRD-0420 | Log levels (DEBUG/INFO/WARNING/ERROR) are used meaningfully and consistently, not everything dumped at one level. | Should | Done | logging_setup.py |
+| PRD-0421 | The one known noisy `ERROR`-level traceback (cancelled ASGI lifespan on shutdown) is documented as cosmetic/expected rather than left unexplained. | Could | Done | final_audit.md §14 |
+| PRD-0422 | Logging setup has no external network dependency of its own (no shipping logs to a remote service by default). | Must | Done | logging_setup.py |
+
+## 26. Reporting & Deliverables (JSON files)
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0423 | Every completed game writes exactly four JSON deliverable files: `declaration_<game_id>.json`, `config_<tag>.json`, `log_<tag>.json`, `result_<game_id>.json`. | Must | Done | FR-082 |
+| PRD-0424 | `build_declaration` produces the Step-0 hardware/identity declaration JSON per Appendix A. | Must | Done | FR-081, NFR-007 |
+| PRD-0425 | `build_result` produces the final outcome/score/positions/move-count summary JSON. | Must | Done | FR-081, FR-082 |
+| PRD-0426 | The config deliverable is a faithful copy/snapshot of the actual `game.json` used for that specific game (not a generic template). | Must | Done | FR-082 |
+| PRD-0427 | The log deliverable contains the full committed/revealed move history sufficient for independent replay verification. | Must | Done | FR-045, FR-082 |
+| PRD-0428 | All four deliverables are written to a per-game directory (`logs/<game-id>/<role>/`), never overwriting a previous game's files. | Must | Done | README §6 |
+| PRD-0429 | Deliverable JSON schemas are stable and documented, so an automated grading script could parse them without ambiguity. | Must | Done | protocol.md §5 |
+| PRD-0430 | The declaration JSON's `commit_hash` field currently holds the placeholder `"unknown"` because a running process can't know its own containing commit's hash; this is documented, not silently wrong. | Must | Partial | final_audit.md §20 |
+| PRD-0431 | Every deliverable file is schema-tested (unit test asserts the produced dict has every mandatory key). | Must | Done | tests/unit/test_reporting.py |
+| PRD-0432 | Deliverables are written correctly regardless of which terminal outcome the game reached (capture, survival, tie, technical loss). | Must | Done | final_audit.md §14 |
+| PRD-0433 | Deliverable file names encode the game ID unambiguously, so multiple games' outputs never collide on disk. | Must | Done | infra/reporting.py |
+| PRD-0434 | The reporting module has no direct network dependency of its own — it only writes local files (Gmail sending is a separate, distinct module). | Must | Done | architecture.md §1 |
+| PRD-0435 | Reporting logic is fully covered by unit tests independent of any real game having been played (fixture-driven). | Must | Done | tests/unit/test_reporting.py |
+| PRD-0436 | The four-deliverable requirement is called out explicitly as "mandatory" in the README and cross-linked to the exact spec appendix that requires it. | Must | Done | README §1 |
+| PRD-0437 | Deliverable JSON is human-readable (indented, not minified) to ease manual inspection during grading. | Should | Done | infra/reporting.py |
+| PRD-0438 | No deliverable file ever contains a secret (credentials, tokens, unrevealed nonces). | Must | Done | NFR-004 |
+| PRD-0439 | Both peers independently produce their own copy of all four deliverables — a grader can cross-check the two sides agree. | Must | Done | README §6, TEST-007 |
+| PRD-0440 | The reporting module's output has been manually inspected at least once against a real produced game, not just asserted by unit tests against synthetic fixtures. | Should | Done | final_audit.md §15 |
+
+## 27. Gmail Integration
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0441 | `infra/gmail_report.py` implements a send-only OAuth2 flow per Appendix A — never requests read/inbox-modify scopes. | Must | Done | FR-080 |
+| PRD-0442 | `report_match_result` sends (or drafts) an end-of-game report email built from `infra/reporting.py::build_result`. | Must | Done | FR-081 |
+| PRD-0443 | Every send attempt is Gatekeeper-guarded, so email sending can never bypass the rate-limiting/quota system. | Must | Done | FR-080 |
+| PRD-0444 | A `mode = "draft"` config option (the safe development default) creates a Gmail draft instead of actually sending. | Must | Done | config/police/game.toml |
+| PRD-0445 | A `mode = "send"` config option performs a real send, intended only for an actual league match. | Must | Done | config/police/game.toml |
+| PRD-0446 | `credentials.json`/`token.json` OAuth material is never committed to the repo (gitignored explicitly). | Must | Done | .gitignore, NFR-004 |
+| PRD-0447 | The send path is mocked in all automated CI tests — no real Gmail API call happens during `pytest`. | Must | Done | testing_strategy.md |
+| PRD-0448 | An integration test with a fake clock confirms the Gatekeeper correctly blocks a Gmail send once quota is exhausted. | Must | Done | implementation_plan.md Part 11 |
+| PRD-0449 | A real OAuth2 flow against a live Google account, and a real sent (non-draft) report email, have not yet been performed/confirmed in this project's development history. | Must | Planned | final_audit.md §20 |
+| PRD-0450 | The recipient address for match reports is config-driven (`[email] → recipient`), not hardcoded. | Must | Done | config/police/game.toml |
+| PRD-0451 | Gmail send failures (network error, auth error, quota exceeded) degrade gracefully — the game result is never lost even if the email fails. | Must | Done | infra/gmail_report.py |
+| PRD-0452 | The Gmail module's report content matches the same schema as the local JSON `result` deliverable, so there's one source of truth for match-result content. | Should | Done | infra/reporting.py |
+| PRD-0453 | OAuth token refresh is handled without requiring a fresh interactive login on every single run. | Should | Done | infra/gmail_report.py |
+| PRD-0454 | The `googleapiclient`/`google.oauth2`/`google.auth` third-party dependencies are scoped with a documented mypy override (no upstream type stubs), not silently ignored project-wide. | Should | Done | pyproject.toml |
+| PRD-0455 | The one untyped Google API call site has an inline, justified `# type: ignore` rather than a blanket module-level suppression. | Should | Done | infra/gmail_report.py |
+
+## 28. League / Multi-Game Play
+
+| ID | Requirement | Priority | Status | Ref |
+|---|---|---|---|---|
+| PRD-0456 | A league series is defined as `num_games` (default 6) games, per Table 18 of the spec. | Must | Done | FR-084 |
+| PRD-0457 | `min_games_to_pass` (default 2) is the minimum number of completed games required for a team to count as having participated. | Must | Done | FR-084 |
+| PRD-0458 | `max_games_per_team` (default 10) caps how many games a single team can play across the league. | Must | Done | FR-084 |
+| PRD-0459 | `diversity_reward` (default 10) exists to reward playing a wider variety of rival teams rather than repeatedly farming one weak opponent. | Should | Partial | FR-084 |
+| PRD-0460 | A mutual daily-log / games-played-count audit between rival teams is not yet wired — this only matters once actually running a real multi-game series. | Should | Planned | FR-083 |
+| PRD-0461 | Each individual game within a series produces its own complete set of four JSON deliverables, independently of series-level aggregation. | Must | Done | FR-082 |
+| PRD-0462 | League-level constants are all sourced from `config/game.json → network_and_league`, matching the spec's Table 18 numbers exactly. | Must | Done | A-002, A-004 |
+| PRD-0463 | A round-trip config test confirms the loaded `NetworkAndLeagueConfig` matches the book's own example numbers exactly. | Must | Done | tests/unit/test_config.py |
+| PRD-0464 | Playing multiple games in a series against the same opponent doesn't require restarting the whole peer process from scratch (or, if it does, that's documented as the current operating model). | Could | Partial | — |
+| PRD-0465 | Aggregate series scoring (summing per-game scores across a 6-game series) is at least representable, even if the audit/reporting automation for it isn't fully built. | Should | Planned | FR-083 |
+| PRD-0466 | Two internal contradictions in the lecturer's spec regarding "games per rival" counts are documented with the resolution chosen. | Must | Done | assumptions.md |
+| PRD-0467 | `sub_game_number` in peer identity config lets a team distinguish which game-within-a-series a given run corresponds to. | Should | Done | config/police/game.toml |
+| PRD-0468 | The league/multi-game feature set is explicitly scoped as "not exercised end-to-end against a real rival team" in this development environment, since no real rival was available. | Must | Done | README §9 |
+| PRD-0469 | `token_budget_per_series` bounds total LLM token spend across an entire 6-game series once/if the LLM banter feature is built. | Should | Done (config exists) | A-005 |
+| PRD-0470 | League-mode config values are validated for internal consistency (`min_games_to_pass <= num_games <= max_games_per_team`) at load time. | Should | Done | A-002 |
+
 ---
 
-*Continued in the next sections (19–37) covering bonus AI brains, config, CLI, GUI, reporting,
-league play, tunneling, testing, non-functional requirements, and submission packaging.*
+*Continued in the next sections (29–37) covering tunneling/remote play, testing strategy,
+documentation, non-functional requirements, error handling, and submission packaging.*
