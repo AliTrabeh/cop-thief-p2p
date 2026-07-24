@@ -32,6 +32,7 @@ from police_thief.logging_setup import get_logger
 from police_thief.orchestrator import Orchestrator, TechnicalLossError
 from police_thief.strategy.base import BrainBase, load_brain_class
 from police_thief.strategy.heuristic import HeuristicPoliceBrain, HeuristicThiefBrain
+from police_thief.strategy.llm_bluff import BanterContext, BanterProvider, build_banter_provider
 
 logger = get_logger("peer_runtime")
 
@@ -48,6 +49,24 @@ def _resolve_brain(role: Role, strategy_spec: str | None) -> BrainBase:
     if not strategy_spec:
         return _default_brain(role)
     return load_brain_class(strategy_spec)()
+
+
+def _resolve_banter_provider(peer_config: PeerConfig, hint_max_words: int) -> BanterProvider | None:
+    """Never lets a banter misconfiguration take down the whole peer: an
+    unimplemented provider (e.g. ``claude_api``, A-005) disables banter for
+    this game with a logged warning instead of crashing startup, since
+    banter is purely cosmetic and never affects protocol/outcome (PRD-0334).
+    """
+    try:
+        return build_banter_provider(
+            peer_config.trash_talk.provider,
+            model=peer_config.llm.model,
+            hint_max_words=hint_max_words,
+            step_deadline_seconds=float(peer_config.llm.step_deadline_seconds),
+        )
+    except (NotImplementedError, ValueError) as exc:
+        logger.warning("banter disabled: %s", exc)
+        return None
 
 
 async def _play_own_turn(orch: Orchestrator, client: MCPPeerClient) -> None:
@@ -84,6 +103,9 @@ async def run_peer(
         else peer_config.strategy.thief_class
     )
     brain = _resolve_brain(role, strategy_spec)
+    banter_provider = _resolve_banter_provider(
+        peer_config, hint_max_words=game_config.world.hint_max_words
+    )
 
     orch = Orchestrator(
         role=role,
@@ -154,6 +176,10 @@ async def run_peer(
                     await _play_own_turn(orch, client)
                 except TechnicalLossError as exc:
                     logger.error("own turn ended in technical loss: %s", exc)
+                else:
+                    if banter_provider is not None:
+                        context = BanterContext(role=role, turn_number=orch.turn_number)
+                        logger.info("banter: %s", banter_provider.generate(context))
                 waited = 0.0
             else:
                 await asyncio.sleep(poll_interval)
