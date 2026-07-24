@@ -18,6 +18,9 @@ Two providers:
 
 ``none`` (the default) skips tunneling entirely — used for the localhost
 two-terminal demo.
+
+The value types (``TunnelProvider``/``TunnelError``/``TunnelHandle``) live in
+``tunnel_types.py``, split out to keep each file under 150 lines.
 """
 
 from __future__ import annotations
@@ -27,48 +30,26 @@ import shutil
 import subprocess
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
-from enum import StrEnum
 
 import httpx
 
+from police_thief.infra.tunnel_types import (
+    ProcessFactory,
+    TunnelError,
+    TunnelHandle,
+    TunnelProvider,
+    WhichFn,
+)
 
-class TunnelProvider(StrEnum):
-    NONE = "none"
-    NGROK = "ngrok"
-    MANUAL = "manual"
-
-
-class TunnelError(Exception):
-    """Raised when a tunnel can't be started or its public URL can't be
-    discovered — never a bare, unexplained traceback."""
-
-
-ProcessFactory = Callable[[list[str]], "subprocess.Popen[bytes]"]
-WhichFn = Callable[[str], str | None]
-
-
-@dataclass
-class TunnelHandle:
-    """A running (or manually-supplied) tunnel. Always call :meth:`stop` in
-    a ``finally`` block — a leaked tunnel process keeps a public port open
-    long after the game ends.
-    """
-
-    provider: TunnelProvider
-    public_url: str
-    _process: subprocess.Popen[bytes] | None = None
-
-    def stop(self) -> None:
-        if self._process is None:
-            return
-        if self._process.poll() is not None:
-            return  # already exited
-        self._process.terminate()
-        try:
-            self._process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            self._process.kill()
+__all__ = [
+    "ProcessFactory",
+    "TunnelError",
+    "TunnelHandle",
+    "TunnelProvider",
+    "WhichFn",
+    "start_ngrok_tunnel",
+    "start_tunnel",
+]
 
 
 async def start_ngrok_tunnel(
