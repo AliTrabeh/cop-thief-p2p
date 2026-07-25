@@ -692,7 +692,7 @@ silently falling back or spending real API credits by default (A-005's no-defaul
 | PRD-0497 | Overall coverage is approximately 80%; the documented reason for the gap (CLI/peer-runtime coverage across subprocess boundaries needs extra plumbing `coverage.py` doesn't get by default) is explained, not just asserted. | Should | Done | testing_strategy.md |
 | PRD-0498 | `ruff format --check .` passes with zero outstanding diffs at every commit. | Must | Done | final_audit.md §6 |
 | PRD-0499 | `ruff check .` passes clean (`All checks passed!`). | Must | Done | final_audit.md §7 |
-| PRD-0500 | `mypy src` passes clean in strict mode across all 46 source files (post 150-line-per-file split), with documented, justified exceptions only for untyped third-party libraries. | Must | Done | final_audit.md §8 |
+| PRD-0500 | `mypy src` passes clean in strict mode across all 49 source files (post 150-line-per-file split), with documented, justified exceptions only for untyped third-party libraries. | Must | Done | final_audit.md §8 |
 | PRD-0501 | `mypy` is deliberately scoped to `src/` only, with the reasoning documented (strict untyped-def checking on test functions isn't a useful signal). | Should | Done | testing_strategy.md |
 | PRD-0502 | Every negative/adversarial-path claim in the README or docs (tamper detection, illegal-move rejection, rate-limit rejection) is backed by an actual test, not just an assertion in prose. | Must | Done | requirements_traceability.md |
 | PRD-0503 | Property-based/fuzz testing is used at least once (default brain legality) rather than only example-based tests, to catch edge cases outside hand-picked fixtures. | Should | Done | implementation_plan.md Part 7 |

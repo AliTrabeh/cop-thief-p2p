@@ -9,7 +9,7 @@ implementation part, alongside `docs/progress.md`.
 not more coding) · 🎁 Bonus (not required for the core grade)
 
 Overall: **19 of 20 phases done** (including both bonus phases), 1 phase partially open (submission
-packaging, and that's now down to items only a human can finish — see below). 209/209 automated
+packaging, and that's now down to items only a human can finish — see below). 217/217 automated
 tests passing in the fast subset (plus the real two-subprocess e2e test), ~84% overall coverage.
 Core game is fully playable end-to-end today, including both optional bonus AI brains. Every
 source and test file in the repository is kept to ≤150 lines by convention (see `docs/architecture.md`
@@ -34,7 +34,7 @@ policy (see "Newly closed" below).
 | 12 | CLI | 🟢 Done | 100% | `cli.py` | `peer` + `replay` + new `audit` subcommands |
 | 13 | GUI (live belief-heatmap view) + Replay Viewer | 🟡 Mostly done | 95% | `gui/live_view.py`, `gui/replay_viewer.py` | logic fully tested (replay viewer now also rejects a structurally-corrupt log with a clear error); live-view screenshot artifact for submission still pending |
 | 14 | Logging & config polish | 🟢 Done | 100% | `logging_setup.py` | secret-redaction filter tested |
-| 15 | Full test suite pass + coverage | 🟢 Done | 100% | `tests/` | 209 tests in the fast subset (+1 e2e), ~84% overall / 91–100% on `domain/` |
+| 15 | Full test suite pass + coverage | 🟢 Done | 100% | `tests/` | 217 tests in the fast subset (+1 e2e), ~84% overall / 91–100% on `domain/` |
 | 16 | Two-peer local E2E demo + scripts | 🟢 Done | 100% | `scripts/*.ps1`, `tests/e2e/` | real two-OS-process game, verified over real HTTP; fixed a real output-dir collision bug in the standalone demo scripts (see below) |
 | 17 | Documentation pass | 🟢 Done | 100% | `README.md`, `docs/*.md` | academic-report style, traceability matrix, assumptions log |
 | 18 | Final verification & submission packaging | 🟡 In Progress | ~80% | `docs/final_audit.md` | every remaining item now needs a human (real credentials, real roster, a policy decision) — see open items below |
@@ -76,6 +76,21 @@ Beyond the two bonus AI brains above, several concrete gaps and one real bug wer
   exactly as documented meant one side's deliverables silently overwrote the other's. Fixed to
   match `run_demo.ps1`'s already-correct per-role subdirectories.
 
+## Newly closed this session (2026-07-25, Appendix E direct-verification pass)
+
+Read Appendix E (printed pages 126-134, all 55 MUST/FORBIDDEN/RECOMMENDED items) and Appendix F
+directly against the book rather than trusting this project's own prior docs. Appendix F's ~34
+parameters matched the running config exactly, item for item. Appendix E surfaced 7 gaps, 6 now
+closed: pre-game declaration timing (item 24, was bundled with post-game deliverables — now written
+before the turn loop by `peer_declaration.py`), a hardware spec in the declaration
+(`infra/hardware_declaration.py`, best-effort/never-raises), an accurate `games_played_so_far`
+count (item 37), `github_commit` in the end-of-game email JSON as well as the declaration (explicit
+red-box requirement, printed page 40), an 8-character `group_id` format validator (item 45), and
+root-level `PLAN.md`/`TODO.md` files (item 50). The 7th — full rival-pairing enforcement in
+`infra/league_audit.py` — is a documented partial fix: `opponent_group_id` is now recorded but not
+yet cross-checked against replays. See `docs/final_audit.md` "Appendix E direct-verification pass"
+for full detail and `TODO.md` for the open item.
+
 ## Phase 18 open items (everything left needs a human, not more code)
 
 1. **Two-repository split** — the spec asks for two separate GitHub repos (cop-owned,
@@ -91,6 +106,9 @@ Beyond the two bonus AI brains above, several concrete gaps and one real bug wer
 4. **Real team roster** — `config/<role>/game.toml`'s `group_name`/`group_id`/`members` are still
    development placeholders; needs real student identifiers before submission (A-012).
 5. **Tag `v1.0-submission`** — once 1–4 above are resolved.
+6. **Rival-pairing enforcement** — `infra/league_audit.py` doesn't yet cross-check
+   `opponent_group_id` to exclude replayed rivals from the league count; see "Newly closed this
+   session" above. 🟡 Partial — code, not blocked on a human, but scoped out of this pass.
 
 ## How this maps to the PRD
 

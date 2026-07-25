@@ -81,9 +81,9 @@ only (not `tests/`) — strict untyped-def checking on test functions isn't a us
 
 ## 9. Tests pass
 
-`uv run pytest -q` — 210 tests (209 in the fast subset + the real-two-process e2e test), all
+`uv run pytest -q` — 218 tests (217 in the fast subset + the real-two-process e2e test), all
 passing. Re-verified fresh as part of this structural-audit pass: `uv sync` from scratch, every
-module in `src/police_thief` imported individually with no failures (46/46), `ruff format --check`/
+module in `src/police_thief` imported individually with no failures (49/49), `ruff format --check`/
 `ruff check`/`mypy --strict` all clean, and the e2e test re-run standalone and confirmed green
 (observed runtime varies 65-135s depending on whether the game ends in an early capture or plays
 out to the full `max_moves` survival case).
@@ -196,6 +196,40 @@ uv run python -m police_thief peer --help
 uv run python -m police_thief replay --help
 ```
 
+## Appendix E direct-verification pass (2026-07-24/25)
+
+Following the structural audit above, the book's Appendix E (printed pages 126-134, all 55
+MUST/FORBIDDEN/RECOMMENDED submission items) and Appendix F (mandatory parameter table) were read
+directly page-by-page and cross-checked against the actual current source, rather than trusting
+this project's own prior documentation. Appendix F's ~34 parameters matched `config/game.json` /
+`domain/game_config.py` exactly, item for item. Appendix E surfaced seven gaps not previously
+closed, six of which are now fixed:
+
+1. **Declaration timing (item 24)** — the Step-0 declaration must be written *before* the game
+   starts, not bundled with the other post-game deliverables. Fixed: `peer_declaration.py` writes
+   it from `start_peer()`, prior to the turn loop.
+2. **Hardware spec (item 24)** — the declaration must include OS/CPU/RAM/GPU for a computational-
+   fairness judgment. Fixed: `infra/hardware_declaration.py`, best-effort, never raises.
+3. **`games_played_so_far` (item 37)** — must be declared accurately at the start of every game.
+   Fixed: best-effort scan of the logs root via the existing `league_audit` module.
+4. **`github_commit` in the result email (explicit red-box requirement, printed page 40)** — must
+   appear in *both* the declaration and the end-of-game completion email JSON. Fixed:
+   `build_result()` now takes and includes `commit_hash`.
+5. **`group_id` format (item 45)** — must be exactly 8 characters, no spaces. Fixed: a
+   `model_validator` on `PeerGameIdentity`; both real config files updated to valid 8-char ids.
+6. **PLAN/TODO files (item 50)** — every repo must include a PRD file, a PLAN file, and TODO files.
+   Fixed: root-level `PLAN.md`/`TODO.md` added (pointing into `docs/` for full detail).
+7. **Rival-pairing enforcement** — "one game per rival counts toward the league" is not yet fully
+   enforced; `opponent_group_id` is now recorded in config and the declaration, but
+   `infra/league_audit.py` does not cross-check it against replayed rivals. Left as a documented
+   partial fix (see `TODO.md`) — judged too large/fragile to add safely in this pass.
+
+All fixes verified via a real two-process demo game (declaration file timestamped ~97s before the
+result/log/config files, both declaration and result carrying the identical real commit hash) plus
+the full test suite (218 tests total, ruff, mypy --strict). Chapters 1-4, 6-11 and Appendices A-D
+have not yet had this same direct line-by-line treatment; the prior structural audit above already
+covers most of their content indirectly (code structure, test coverage, protocol correctness).
+
 ## Known limitations (repeated from README.md for completeness)
 
 See `README.md` §9. In short: the two-repo split, submission screenshots, a real Gmail send test,
@@ -203,5 +237,7 @@ and the real team roster are the concrete remaining gaps, and every one of them 
 more code (tunneling was closed in an earlier pass — ngrok is now fully automated and unit-tested,
 though not yet run against a real ngrok install or remote rival; FR-083's league audit and FR-087's
 real commit hash were closed in this pass; both bonus AI brains, RL and LLM banter, are now
-implemented and tested); everything else in the spec that this project claims to implement has a
-passing automated test or a documented manual verification.
+implemented and tested; the Appendix E direct-verification pass above closed six further gaps and
+left one — rival-pairing enforcement — as a documented partial fix); everything else in the spec
+that this project claims to implement has a passing automated test or a documented manual
+verification.

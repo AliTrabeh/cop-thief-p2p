@@ -57,14 +57,14 @@ and every entry in `docs/progress.md`.
 | FR-085 | `.gitignore` | manual review | Implemented | docs/final_audit.md §16 |
 | FR-086 | repo/tag process | manual, not yet done | Planned | implementation_plan.md Part 18, docs/final_audit.md §20 |
 | FR-087 | `infra/vcs.py::current_commit_hash` (runs `git rev-parse HEAD` at runtime, degrades to `"unknown"` only if not a git checkout) wired into `infra/reporting.py::build_declaration`'s `commit_hash` field via `peer_runtime.py` — no manual per-game step needed | `tests/unit/test_vcs.py`, `tests/unit/test_reporting.py` | Tested | docs/final_audit.md §20 |
-| FR-088 | `config/<role>/game.toml::PeerGameIdentity` (group_name/group_id/members structure exists; real team roster is user-supplied) | `tests/unit/test_config.py` | Implemented (structure); manual (real roster) | assumptions.md A-012 |
+| FR-088 | `config/<role>/game.toml::PeerGameIdentity` (group_name/group_id/members structure exists, `group_id` validated as exactly 8 characters/no spaces per Appendix E item 45; real team roster is user-supplied) | `tests/unit/test_config.py`, `tests/unit/test_peer_config.py` | Implemented (structure + validation); manual (real roster) | assumptions.md A-012 |
 | NFR-001 | package boundaries (`domain/` has no I/O imports) | manual review (no lint rule yet) + `tests/unit/*` all run without sockets/GUI | Implemented | architecture.md §1 |
 | NFR-002 | `pathlib` used throughout (`config.py`, `cli.py`, `peer_runtime.py`, `reporting.py`, `gui/replay_viewer.py`) | manual review; every test runs on Windows in this session | Implemented | — |
 | NFR-003 | `peer_runtime.py::run_peer`'s `finally` block (server task cancellation, GUI teardown) | `tests/e2e/test_two_peer_local_game.py`, manual two-process runs (clean exit + correct deliverables every time) | Tested | architecture.md §6 |
 | NFR-004 | `logging_setup.py` (RedactionFilter, configure_logging/get_logger) | `tests/unit/test_logging_setup.py` | Tested | testing_strategy.md §1 |
 | NFR-005 | `config.py` (`load_game_config`/`load_peer_config`) | `tests/unit/test_config.py` | Tested | protocol.md §5/§6 |
 | NFR-006 | `infra/gatekeeper.py`, `infra/mcp_server.py` (oversized-payload guard) | `tests/unit/test_gatekeeper.py`, `tests/network/test_mcp_transport.py` | Tested | architecture.md §7 |
-| NFR-007 | Step-0 declaration JSON emitter | manual + schema test | Planned | assumptions.md A-007 |
+| NFR-007 | Step-0 declaration JSON emitter (`peer_declaration.py::write_pre_game_declaration`, written before the turn loop starts, includes `infra/hardware_declaration.py`'s best-effort OS/CPU/RAM/GPU spec and an accurate `games_played_so_far` count) | `tests/unit/test_reporting.py`, `tests/unit/test_hardware_declaration.py`, manual two-process run | Tested | assumptions.md A-007 |
 | NFR-008 | `config.py::shared_config_hash` | `tests/unit/test_config.py` | Tested | protocol.md §5 |
 | PROTO-001..004 | `config.py` (schema_version), `domain/crypto.py` (canonical JSON), `infra/protocol.py` (ProtocolMessage/ProtocolResponse), `infra/mcp_server.py` (tool surface + sequencing) | `tests/network/test_mcp_transport.py` | Tested | protocol.md |
 | TEST-001..006 | see testing_strategy.md | themselves | Tested | testing_strategy.md |

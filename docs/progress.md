@@ -685,3 +685,37 @@ test functions for a purely cosmetic gain, disproportionate to the actual risk).
 
 **Verdict**: project structure is clean and built as required. No code changes were needed as a
 result of this audit — only documentation corrections.
+
+## 2026-07-25 — Appendix E direct-verification pass
+
+**Motivation**: rather than trust this project's own prior documentation (already found stale once,
+above), read the book's Appendix E (printed pages 126-134, all 55 MUST/FORBIDDEN/RECOMMENDED
+submission items) and Appendix F (mandatory parameter table) directly, page by page, and cross-check
+each item against the actual current source code.
+
+**Files changed**: `src/police_thief/infra/hardware_declaration.py` (new), `peer_declaration.py`
+(new), `infra/reporting_writers.py` (new, split out of `infra/reporting.py` to stay under 150
+lines), `infra/reporting.py`, `peer_startup.py`, `peer_runtime.py`, `peer_deliverables.py`,
+`config.py`, `config/police/game.toml`, `config/thief/game.toml`, `PLAN.md` (new), `TODO.md` (new),
+plus test updates across `tests/unit/`.
+
+**Requirements completed**: Appendix F cross-checked with zero deviations found (~34 parameters,
+exact match). Appendix E surfaced 7 gaps; 6 closed — pre-game declaration timing (item 24), hardware
+spec in the declaration, an accurate `games_played_so_far` count (item 37), `github_commit` in the
+end-of-game email JSON as well as the declaration (printed page 40 red box), an 8-character
+`group_id` format validator (item 45), and root-level `PLAN.md`/`TODO.md` files (item 50). The 7th
+(rival-pairing enforcement in `infra/league_audit.py`) is a documented partial fix — see `TODO.md`.
+
+**Tests executed**: `uv run pytest tests/unit tests/integration tests/network -q` (217 passed),
+`uv run pytest tests/e2e -v` (1 passed, real two-subprocess game), `uv run ruff check .` (clean),
+`uv run mypy src` (49 files, 0 errors).
+
+**Test results**: all green. Also smoke-tested manually via `scripts/run_demo.ps1`: confirmed the
+declaration JSON is written ~97s before the other three deliverables (proving it now genuinely
+precedes the game rather than following it), and that both the declaration and the result JSON carry
+the identical real git commit hash.
+
+**Remaining issues**: Chapters 1-4, 6-11 and Appendices A-D have not yet had this same direct
+line-by-line treatment (the prior structural audit already covers most of their content indirectly).
+Rival-pairing enforcement remains partial. All four pre-existing Phase 18 human-only items (two-repo
+split, submission screenshots, real Gmail send, real team roster) are unchanged.
