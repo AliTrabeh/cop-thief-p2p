@@ -39,7 +39,7 @@ _PEER_TOML_TEMPLATE = """
 version = "1.10"
 [game]
 group_name = "Test-Team"
-group_id = "test-team"
+group_id = "testteam"
 [network]
 my_port = {port}
 opponent_url = "http://127.0.0.1:1/mcp"

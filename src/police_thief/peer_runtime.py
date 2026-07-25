@@ -9,10 +9,11 @@ signaling message). The idle side is otherwise just its FastMCP server,
 passively handling the mover's COMMIT/REVEAL calls via
 ``Orchestrator.handle_message`` (Part 8/9).
 
-Split across four files (each kept under the project's 150-line limit): this
-file owns just the turn loop and cleanup; ``peer_startup.py`` owns the async
-setup wiring (config, server, tunnel, client, GUI); ``peer_setup.py`` owns
-one-time sync startup helpers (port probe, strategy/banter resolution);
+Split across several files (each kept under the project's 150-line limit):
+this file owns just the turn loop and cleanup; ``peer_startup.py`` owns the
+async setup wiring (config, server, tunnel, client, GUI); ``peer_setup.py``
+owns one-time sync startup helpers (port probe, strategy/banter resolution);
+``peer_declaration.py`` owns the pre-game Step-0 declaration;
 ``peer_deliverables.py`` owns end-of-game JSON/email reporting.
 """
 
@@ -109,7 +110,7 @@ async def run_peer(
     show_gui: bool = False,
 ) -> Orchestrator:
     """Run one full game as ``role`` and return the finished Orchestrator."""
-    handles = await start_peer(role, config_dir, game_id, show_gui=show_gui)
+    handles = await start_peer(role, config_dir, game_id, show_gui=show_gui, output_dir=output_dir)
     try:
         await _drive_turn_loop(handles, role, poll_interval, max_wait_seconds)
     finally:
@@ -122,6 +123,8 @@ async def run_peer(
             handles.view.root.destroy()
 
     if output_dir is not None:
-        write_deliverables(handles.orch, handles.peer_config, game_id, output_dir)
+        write_deliverables(
+            handles.orch, handles.peer_config, game_id, output_dir, handles.commit_hash
+        )
 
     return handles.orch

@@ -14,7 +14,7 @@ import json
 import tomllib
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from police_thief.domain.crypto import hash_state
 from police_thief.domain.game_config import GameConfig
@@ -65,9 +65,23 @@ def shared_config_hash(path: Path) -> str:
 class PeerGameIdentity(_StrictPeerModel):
     group_name: str
     group_id: str
+    opponent_group_id: str = ""  # filled in per real match; blank for local self-play
     sub_game_number: int = 1
     members: list[str] = Field(default_factory=list)
     repos: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _check_group_id(self) -> PeerGameIdentity:
+        # Appendix E item 45: "a unique group ID of eight characters, no
+        # spaces" -- validated as a format rule independent of whether the
+        # actual value is a real team name yet (A-012: single-contributor
+        # development placeholders still must satisfy the format).
+        if len(self.group_id) != 8 or any(c.isspace() for c in self.group_id):
+            raise ValueError(
+                f"group_id must be exactly 8 characters with no spaces (Appendix E item 45), "
+                f"got {self.group_id!r} ({len(self.group_id)} chars)"
+            )
+        return self
 
 
 class PeerNetworkConfig(_StrictPeerModel):

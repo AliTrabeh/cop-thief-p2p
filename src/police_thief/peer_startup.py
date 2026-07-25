@@ -3,6 +3,11 @@
 keep each file under the project's 150-line-per-file limit. Everything here
 runs once, before the turn loop starts; ``run_peer`` calls :func:`start_peer`
 and then drives the returned handles.
+
+The *pre-game* Step-0 declaration (hardware spec, commit hash, games-played
+count -- book §5.5, Appendix E items 24/37) is written here too, via
+``peer_declaration.py`` (split out separately): before the game, not
+bundled with the other three deliverables at the end.
 """
 
 from __future__ import annotations
@@ -20,8 +25,10 @@ from police_thief.domain.models import Role
 from police_thief.infra.mcp_client import MCPPeerClient
 from police_thief.infra.mcp_server import build_server
 from police_thief.infra.tunnel import TunnelError, TunnelHandle, start_tunnel
+from police_thief.infra.vcs import current_commit_hash
 from police_thief.logging_setup import get_logger
 from police_thief.orchestrator import Orchestrator
+from police_thief.peer_declaration import write_pre_game_declaration
 from police_thief.peer_setup import PeerRuntimeError, check_port_available, resolve_banter_provider
 from police_thief.peer_setup import resolve_brain as _resolve_brain
 from police_thief.strategy.llm_bluff import BanterProvider
@@ -42,14 +49,21 @@ class PeerHandles:
     tunnel: TunnelHandle | None
     client: MCPPeerClient
     view: LiveView | None
+    commit_hash: str
 
 
-async def start_peer(role: Role, config_dir: Path, game_id: str, *, show_gui: bool) -> PeerHandles:
+async def start_peer(
+    role: Role, config_dir: Path, game_id: str, *, show_gui: bool, output_dir: Path | None = None
+) -> PeerHandles:
     try:
         game_config = load_game_config(config_dir / "game.json")
         peer_config = load_peer_config(config_dir / role.value / "game.toml")
     except ConfigError as exc:
         raise PeerRuntimeError(str(exc)) from exc
+
+    commit_hash = current_commit_hash()
+    if output_dir is not None:
+        write_pre_game_declaration(output_dir, peer_config, game_id, commit_hash, game_config)
 
     strategy_spec = (
         peer_config.strategy.police_class
@@ -126,4 +140,5 @@ async def start_peer(role: Role, config_dir: Path, game_id: str, *, show_gui: bo
         tunnel=tunnel,
         client=client,
         view=view,
+        commit_hash=commit_hash,
     )

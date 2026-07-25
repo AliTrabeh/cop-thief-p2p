@@ -2,7 +2,8 @@ version = "1.10"
 
 [game]
 group_name = "My-Team"
-group_id   = "my-team"
+group_id   = "my-team1"              # exactly 8 chars, no spaces (Appendix E item 45) -- replace with your real ID
+opponent_group_id = ""               # fill in per real match; blank for local self-play
 sub_game_number = 1
 members = ["id-1001"]
 repos = { cop = "https://github.com/AliTrabeh/cop-thief-p2p", thief = "https://github.com/AliTrabeh/cop-thief-p2p" }
