@@ -7,8 +7,8 @@ each entry below.
 ## Needs a human decision or credentials (not more code)
 
 - [ ] **Two-repository split** — spec asks for separate cop-owned/thief-owned GitHub repos; project
-      currently lives in one repo for development convenience (`docs/assumptions.md` A-008). Needs
-      either an actual split or explicit lecturer sign-off that one repo is acceptable.
+      currently lives in one repo for development convenience (`docs/assumptions.md` A-008).
+      Decided 2026-07-28 to request lecturer sign-off rather than split; awaiting their reply.
 - [ ] **Submission screenshots** — capture the live-view heatmap and Replay Viewer `Verified OK`
       banner as image artifacts for the Appendix C Table 6 checklist.
 - [ ] **Real Gmail send test** — `infra/gmail_report.py` is only exercised in `draft` mode so far;

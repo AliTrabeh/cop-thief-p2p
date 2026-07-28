@@ -78,11 +78,11 @@ attempt automatic fairness scoring — this is intentionally out of scope, match
 Appendix C mandates two separate GitHub repos (one "owned" by the cop side, one by the thief side)
 per submitting group, cross-linked. During development this project lives in a single repository
 (`AliTrabeh/cop-thief-p2p`) for convenience of iteration by one contributor.
-**Decision:** documented as a known gap to close before final submission — either (a) split into
-two repos late in the process (e.g. via `git subtree`/mirrors) once both peer packages are stable,
-or (b) confirm with the lecturer whether a single shared-access repo satisfies the "two accesses,
-cross-linked" requirement for a solo/duo submission. Tracked in `docs/progress.md` and the final
-audit; not blocking early implementation phases.
+**Decision (2026-07-28):** option (b) — keep the single repository and request explicit lecturer
+sign-off that it satisfies the "two accesses, cross-linked" requirement, rather than mechanically
+splitting a stable, fully-tested codebase this late. Confirmation from the lecturer is pending;
+until it arrives this item stays ⚪ in `docs/STATUS.md`. If the lecturer declines, fall back to
+option (a) (split via `git subtree`/mirrors). Tracked in `docs/progress.md` and the final audit.
 
 ### A-009 — Barrier count vs. move count vs. board size interaction
 

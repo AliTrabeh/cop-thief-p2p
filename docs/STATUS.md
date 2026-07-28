@@ -95,8 +95,9 @@ for full detail and `TODO.md` for the open item.
 
 1. **Two-repository split** — the spec asks for two separate GitHub repos (cop-owned,
    thief-owned), cross-linked. Currently everything lives in one repo
-   (`AliTrabeh/cop-thief-p2p`) for development convenience. Needs either an actual split or
-   explicit lecturer sign-off that one repo is acceptable (`docs/assumptions.md` A-008). ⚪ Deferred — needs your decision.
+   (`AliTrabeh/cop-thief-p2p`) for development convenience. **Decided 2026-07-28**: request
+   lecturer sign-off that one repo is acceptable rather than splitting (`docs/assumptions.md`
+   A-008). ⚪ Deferred — awaiting lecturer's actual reply, not a further decision.
 2. **Submission screenshots** — the live-view heatmap and the Replay Viewer's `Verified OK`
    banner both work (proven by tests + manual runs) but the actual image artifacts for the
    Appendix C Table 6 checklist haven't been captured yet.
