@@ -1,11 +1,11 @@
 version = "1.10"
 
 [game]
-group_name = "My-Team"
-group_id   = "my-team1"              # exactly 8 chars, no spaces (Appendix E item 45) -- replace with your real ID
+group_name = "ali-ahm1"
+group_id   = "ali-ahm1"              # exactly 8 chars, no spaces (Appendix E item 45)
 opponent_group_id = ""               # fill in per real match; blank for local self-play
 sub_game_number = 1
-members = ["id-1001"]
+members = ["Ahmad Kais (318212248)", "Ali Trabeh (316575299)"]
 repos = { cop = "https://github.com/AliTrabeh/cop-thief-p2p", thief = "https://github.com/AliTrabeh/cop-thief-p2p" }
 
 [network]
