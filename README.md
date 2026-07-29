@@ -4,6 +4,10 @@ Distributed Cops-and-Robbers over a Peer-to-Peer Network — final project for t
 course (University of Haifa, 2026), per the lecturer's specification (`police_thief_p2p.pdf`,
 kept out of this repo — see [Known Limitations](#known-limitations)).
 
+> **Repository role: thief-owned.** Per the submission spec's two-repository requirement, this repo
+> is the thief (robber) side. Cop-owned counterpart (same codebase and history, cross-linked):
+> **https://github.com/AliTrabeh/cop-thief-p2p**
+
 This README is the **academic report** required by the submission spec (not just install
 instructions). Deep-dive documents live in [`docs/`](docs/); this file summarizes and links to them.
 
