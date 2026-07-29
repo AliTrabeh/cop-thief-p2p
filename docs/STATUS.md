@@ -37,7 +37,7 @@ policy (see "Newly closed" below).
 | 15 | Full test suite pass + coverage | 🟢 Done | 100% | `tests/` | 217 tests in the fast subset (+1 e2e), ~84% overall / 91–100% on `domain/` |
 | 16 | Two-peer local E2E demo + scripts | 🟢 Done | 100% | `scripts/*.ps1`, `tests/e2e/` | real two-OS-process game, verified over real HTTP; fixed a real output-dir collision bug in the standalone demo scripts (see below) |
 | 17 | Documentation pass | 🟢 Done | 100% | `README.md`, `docs/*.md` | academic-report style, traceability matrix, assumptions log |
-| 18 | Final verification & submission packaging | 🟡 In Progress | ~80% | `docs/final_audit.md` | every remaining item now needs a human (real credentials, real roster, a policy decision) — see open items below |
+| 18 | Final verification & submission packaging | 🟡 In Progress | ~85% | `docs/final_audit.md` | two-repo split done; remaining items need real credentials, real screenshots, and real league matches — see open items below |
 | 19 🎁 | Bonus: Reinforcement-learning brain (`strategy/qlearning.py`) | 🟢 Done | 100% | `strategy/qlearning.py` | tabular Q-learning, BONUS-001; opt-in via `[strategy]` config, never the default |
 | 20 🎁 | Bonus: LLM trash-talk / banter (`strategy/llm_bluff.py`) | 🟢 Done | 100% | `strategy/llm_bluff.py` | BONUS-002; `template` (default, offline) + `ollama` (local, zero-cost) providers implemented; `claude_api`/`claude_cli` deliberately left unimplemented (raises clearly) per A-005's no-default-spend policy |
 
@@ -93,11 +93,11 @@ for full detail and `TODO.md` for the open item.
 
 ## Phase 18 open items (everything left needs a human, not more code)
 
-1. **Two-repository split** — the spec asks for two separate GitHub repos (cop-owned,
-   thief-owned), cross-linked. Currently everything lives in one repo
-   (`AliTrabeh/cop-thief-p2p`) for development convenience. **Decided 2026-07-28**: request
-   lecturer sign-off that one repo is acceptable rather than splitting (`docs/assumptions.md`
-   A-008). ⚪ Deferred — awaiting lecturer's actual reply, not a further decision.
+1. **Two-repository split** — 🟢 Done (2026-07-29). Verified via full-text search of the spec that
+   this is mandatory with no waiver clause (Ch 9.4, Appendix E item 49, Appendix C Table 6).
+   `AliTrabeh/cop-thief-p2p` (cop-owned) and `AliTrabeh/cop-thief-p2p-thief` (thief-owned, mirrored
+   history) now exist, cross-linked via README, with `config/<role>/game.toml`'s `repos` field
+   pointing at the real distinct URLs. See `docs/assumptions.md` A-008.
 2. **Submission screenshots** — the live-view heatmap and the Replay Viewer's `Verified OK`
    banner both work (proven by tests + manual runs) but the actual image artifacts for the
    Appendix C Table 6 checklist haven't been captured yet.
