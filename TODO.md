@@ -12,8 +12,10 @@ each entry below.
       field updated. See `docs/assumptions.md` A-008.
 - [ ] **Submission screenshots** — capture the live-view heatmap and Replay Viewer `Verified OK`
       banner as image artifacts for the Appendix C Table 6 checklist.
-- [ ] **Real Gmail send test** — `infra/gmail_report.py` is only exercised in `draft` mode so far;
-      send one real end-of-game report against a live Google account (OAuth2 consent required).
+- [x] **Real Gmail send test** — done 2026-07-29. Verified full OAuth2 flow (new bootstrap script
+      `scripts/setup_gmail_oauth.py`) and a real `gmail.send`-only send/receive against a live
+      account. Real league matches will point `[email].recipient`/`mode="send"` at the actual
+      grading address in `config/<role>/game.toml`.
 - [ ] **Real team roster** — replace the development-placeholder `group_name`/`group_id`/`members`
       in `config/<role>/game.toml` with real student identifiers before submission.
 - [ ] **Tag `v1.0-submission`** — once the four items above are resolved.

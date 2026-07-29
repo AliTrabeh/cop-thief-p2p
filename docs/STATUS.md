@@ -30,7 +30,7 @@ policy (see "Newly closed" below).
 | 8 | FastMCP P2P transport + tunneling | 🟢 Done | 100% | `infra/mcp_server.py`, `infra/mcp_client.py`, `infra/tunnel.py` | ngrok automated; not yet run against a real ngrok binary or real remote rival |
 | 9 | Orchestrator + Watchdog + Deadline Tracker | 🟢 Done | 100% | `orchestrator.py`, `infra/watchdog.py` | Single Gateway pattern |
 | 10 | Gatekeeper (rate limiting) | 🟢 Done | 100% | `infra/gatekeeper.py` | Token Bucket + Quota Manager + DOS Detector |
-| 11 | Gmail API reporting | 🟡 Mostly done | 90% | `infra/gmail_report.py` | code path tested only in `draft` mode; real OAuth2 send against a live account not yet confirmed |
+| 11 | Gmail API reporting | 🟢 Done | 100% | `infra/gmail_report.py`, `scripts/setup_gmail_oauth.py` | real OAuth2 `send` mode verified end-to-end (2026-07-29): least-privilege `gmail.send`-only token, real message delivered and received |
 | 12 | CLI | 🟢 Done | 100% | `cli.py` | `peer` + `replay` + new `audit` subcommands |
 | 13 | GUI (live belief-heatmap view) + Replay Viewer | 🟡 Mostly done | 95% | `gui/live_view.py`, `gui/replay_viewer.py` | logic fully tested (replay viewer now also rejects a structurally-corrupt log with a clear error); live-view screenshot artifact for submission still pending |
 | 14 | Logging & config polish | 🟢 Done | 100% | `logging_setup.py` | secret-redaction filter tested |
@@ -101,9 +101,8 @@ for full detail and `TODO.md` for the open item.
 2. **Submission screenshots** — the live-view heatmap and the Replay Viewer's `Verified OK`
    banner both work (proven by tests + manual runs) but the actual image artifacts for the
    Appendix C Table 6 checklist haven't been captured yet.
-3. **Real Gmail send test** — `infra/gmail_report.py` is only exercised in `draft` mode so far;
-   a real end-of-game report email against a live Google account (OAuth2 flow) hasn't been sent.
-   Needs real `credentials.json`/interactive OAuth consent — can't be done without you.
+3. **Real Gmail send test** — 🟢 Done (2026-07-29). Real OAuth2 flow completed via
+   `scripts/setup_gmail_oauth.py`, a real message sent and received via `gmail.send`-only scope.
 4. **Real team roster** — `config/<role>/game.toml`'s `group_name`/`group_id`/`members` are still
    development placeholders; needs real student identifiers before submission (A-012).
 5. **Tag `v1.0-submission`** — once 1–4 above are resolved.
