@@ -6,7 +6,7 @@ group_id   = "ali-ahm1"              # exactly 8 chars, no spaces (Appendix E it
 opponent_group_id = ""               # fill in per real match; blank for local self-play
 sub_game_number = 1
 members = ["Ahmad Kais (318212248)", "Ali Trabeh (316575299)"]
-repos = { cop = "https://github.com/AliTrabeh/cop-thief-p2p", thief = "https://github.com/AliTrabeh/cop-thief-p2p" }
+repos = { cop = "https://github.com/AliTrabeh/cop-thief-p2p", thief = "https://github.com/AliTrabeh/cop-thief-p2p-thief" }
 
 [network]
 my_port = 8802
