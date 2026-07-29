@@ -6,9 +6,10 @@ each entry below.
 
 ## Needs a human decision or credentials (not more code)
 
-- [ ] **Two-repository split** — spec asks for separate cop-owned/thief-owned GitHub repos; project
-      currently lives in one repo for development convenience (`docs/assumptions.md` A-008).
-      Decided 2026-07-28 to request lecturer sign-off rather than split; awaiting their reply.
+- [x] **Two-repository split** — done 2026-07-29. Confirmed mandatory (no waiver option) via
+      full-text search of the spec; split into `cop-thief-p2p` (cop-owned) and
+      `cop-thief-p2p-thief` (thief-owned, mirrored history), cross-linked READMEs, `repos` config
+      field updated. See `docs/assumptions.md` A-008.
 - [ ] **Submission screenshots** — capture the live-view heatmap and Replay Viewer `Verified OK`
       banner as image artifacts for the Appendix C Table 6 checklist.
 - [ ] **Real Gmail send test** — `infra/gmail_report.py` is only exercised in `draft` mode so far;

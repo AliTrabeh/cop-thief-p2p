@@ -78,11 +78,17 @@ attempt automatic fairness scoring — this is intentionally out of scope, match
 Appendix C mandates two separate GitHub repos (one "owned" by the cop side, one by the thief side)
 per submitting group, cross-linked. During development this project lives in a single repository
 (`AliTrabeh/cop-thief-p2p`) for convenience of iteration by one contributor.
-**Decision (2026-07-28):** option (b) — keep the single repository and request explicit lecturer
-sign-off that it satisfies the "two accesses, cross-linked" requirement, rather than mechanically
-splitting a stable, fully-tested codebase this late. Confirmation from the lecturer is pending;
-until it arrives this item stays ⚪ in `docs/STATUS.md`. If the lecturer declines, fall back to
-option (a) (split via `git subtree`/mirrors). Tracked in `docs/progress.md` and the final audit.
+**Decision (2026-07-29, superseding the 2026-07-28 entry below):** a full-text search of the spec
+across all 160 pages found the two-repository requirement stated as mandatory in three independent
+places — Chapter 9.4's body text, Appendix E's MUST-rules table (item 49), and Appendix C's
+submission checklist (Table 6) — with no waiver or lecturer-sign-off clause anywhere. Option (b)
+(ask for sign-off) was therefore abandoned. Implemented option (a) instead: `AliTrabeh/cop-thief-p2p`
+is now the cop-owned repo and a new `AliTrabeh/cop-thief-p2p-thief` (same history, pushed as a
+mirror) is the thief-owned repo, each README cross-linking to the other, `config/<role>/game.toml`'s
+`repos` field updated to the real distinct URLs. Both repos are kept in sync commit-for-commit
+except for the one intentionally-differing README line identifying each repo's role — this also
+satisfies Appendix E item 11's "identical code on both sides" rule, since both repos hold the exact
+same engine.
 
 ### A-009 — Barrier count vs. move count vs. board size interaction
 
