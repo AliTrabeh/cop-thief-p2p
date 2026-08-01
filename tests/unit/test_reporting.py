@@ -57,6 +57,19 @@ def test_build_result_for_a_technical_loss(game_config):
     assert result["thief_score"] == 0
 
 
+def test_build_result_for_opponent_timeout_credits_the_local_peer(game_config):
+    # mark_opponent_unresponsive sets technical_loss_role=None (connectivity
+    # failure, not a rules violation).  The local peer (police) is NOT at fault
+    # so it should receive the survival score, not 0.
+    orch = _orchestrator(game_config)
+    orch.mark_opponent_unresponsive(30.0)
+    result = build_result(orch, "report-test", commit_hash="abc123")
+    assert result["outcome"] == "technical_loss"
+    assert result["technical_loss_role"] is None  # unresponsive has no named disqualified role
+    assert result["cop_score"] == game_config.scoring.survival_cop  # local peer credited
+    assert result["thief_score"] == 0  # unresponsive opponent penalised
+
+
 def test_write_match_deliverables_creates_all_four_files(tmp_path: Path, game_config):
     orch = _orchestrator(game_config)
     orch.board.outcome = Outcome.SURVIVAL

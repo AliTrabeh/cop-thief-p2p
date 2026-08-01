@@ -25,6 +25,7 @@ from police_thief.domain.game_config import GameConfig
 from police_thief.domain.models import Role
 from police_thief.domain.scoring import score, technical_loss_score
 from police_thief.orchestrator import Orchestrator
+from police_thief.orchestrator_types import opponent_of
 
 
 def build_declaration(
@@ -74,9 +75,10 @@ def build_result(orch: Orchestrator, game_id: str, *, commit_hash: str) -> dict[
     declaration).
     """
     if orch.technical_loss_reason is not None:
-        cop_score, thief_score = technical_loss_score(
-            orch.config, orch.technical_loss_role or orch.role
-        )
+        # technical_loss_role is None only for connectivity timeouts (no rules violation);
+        # the unresponsive party is still the de facto disqualified side.
+        disqualified = orch.technical_loss_role if orch.technical_loss_role is not None else opponent_of(orch.role)
+        cop_score, thief_score = technical_loss_score(orch.config, disqualified)
         outcome_name = "technical_loss"
     else:
         cop_score, thief_score = score(orch.board)
