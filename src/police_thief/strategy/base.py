@@ -53,6 +53,14 @@ def build_belief_view(board: BoardState, opponent_scent: ScentField, role: Role)
     """
     cfg = board.config
     b = belief_map(opponent_scent, cfg.board_and_agents.grid_size)
+    if board.barriers:
+        # Barrier cells are impassable; the opponent can never occupy them, so
+        # their probability must be 0 to avoid strategies targeting them for
+        # barrier placement (which would raise IllegalActionError at runtime).
+        b = {coord: (0.0 if coord in board.barriers else v) for coord, v in b.items()}
+        total = sum(b.values())
+        if total > 0:
+            b = {coord: v / total for coord, v in b.items()}
     return BeliefView(
         role=role,
         own_position=board.position_of(role),

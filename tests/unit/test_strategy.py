@@ -104,6 +104,21 @@ def test_thief_brain_never_sees_the_cops_true_position_directly(game_config):
     assert decoy != board.cop_position
 
 
+def test_belief_view_zeroes_out_existing_barrier_cells(game_config):
+    # build_belief_view must mask barrier cells to 0 so no brain can target
+    # an already-occupied cell for a second barrier placement.
+    board = BoardState.initial(game_config)
+    barrier_cell = Coordinate(row=2, col=3)
+    # Inject barrier directly to bypass the cop-adjacency precondition —
+    # we're testing build_belief_view's masking logic, not place_barrier.
+    board.barriers.add(barrier_cell)
+    board.barriers_placed = 1
+    scent = ScentField(config=game_config)
+    scent.deposit(barrier_cell)  # concentrate scent at the barrier cell
+    view = build_belief_view(board, scent, Role.POLICE)
+    assert view.belief[barrier_cell] == 0.0
+
+
 def test_all_legal_move_directions_are_reachable_as_tiebreak_winners(game_config):
     # Sanity check that the tie-break (iteration order of view.legal_moves,
     # itself following the configured move_set order) is stable and doesn't
