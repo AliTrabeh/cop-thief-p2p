@@ -77,7 +77,7 @@ def build_result(orch: Orchestrator, game_id: str, *, commit_hash: str) -> dict[
     if orch.technical_loss_reason is not None:
         # technical_loss_role is None only for connectivity timeouts (no rules violation);
         # the unresponsive party is still the de facto disqualified side.
-        disqualified = orch.technical_loss_role if orch.technical_loss_role is not None else opponent_of(orch.role)
+        disqualified = orch.technical_loss_role or opponent_of(orch.role)
         cop_score, thief_score = technical_loss_score(orch.config, disqualified)
         outcome_name = "technical_loss"
     else:

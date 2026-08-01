@@ -7,8 +7,10 @@ from __future__ import annotations
 
 from _orchestrator_helpers import make_orchestrator
 
+from police_thief.domain.crypto import commit as crypto_commit
 from police_thief.domain.models import Coordinate, Role
 from police_thief.infra.protocol import MessageType, ProtocolMessage, RejectReason
+from police_thief.orchestrator_types import LogEntry
 
 
 def test_receive_commit_does_not_mutate_the_board(game_config):
@@ -102,6 +104,30 @@ def test_receive_reveal_decays_old_scent_before_depositing_new(game_config):
     )
     intensity_after_second = orch.opponent_scent.intensity_at(probe)
     assert intensity_after_second < intensity_after_first
+
+
+def test_receive_final_reveal_tampered_hash_causes_technical_loss(game_config):
+    # E-19/FR-043: a commitment hash mismatch on Final Reveal is a hard
+    # technical disqualification for the opponent, not a soft warning.
+    orch = make_orchestrator(game_config, Role.POLICE)
+    h_commit, _correct_nonce = crypto_commit("state", "MOVE:N", "truth")
+    orch.opponent_log.append(
+        LogEntry(turn_number=0, role=Role.THIEF, state_hash="state",
+                 move="MOVE:N", intent="truth", h_commit=h_commit)
+    )
+    response = orch.handle_message(
+        ProtocolMessage(
+            message_type=MessageType.FINAL_REVEAL,
+            game_id="test-game",
+            turn_number=0,
+            sender_role=Role.THIEF,
+            payload={"0": '{"state_hash": "state", "nonce": "wrong-nonce"}'},
+        )
+    )
+    assert not response.accepted
+    assert response.reason is RejectReason.INVALID_SIGNATURE
+    assert orch.is_over
+    assert orch.technical_loss_role is Role.THIEF
 
 
 def test_receive_reveal_malformed_move_is_rejected(game_config):

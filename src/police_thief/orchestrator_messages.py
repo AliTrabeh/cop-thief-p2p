@@ -12,6 +12,7 @@ import json
 from typing import TYPE_CHECKING
 
 from police_thief.domain.board import IllegalActionError
+from police_thief.domain.crypto import verify as crypto_verify
 from police_thief.infra.protocol import MessageType, ProtocolMessage, ProtocolResponse, RejectReason
 from police_thief.orchestrator_types import (
     LogEntry,
@@ -55,9 +56,10 @@ def produce_final_reveal(orch: Orchestrator) -> ProtocolMessage:
 
 def receive_final_reveal(orch: Orchestrator, message: ProtocolMessage) -> ProtocolResponse:
     """Fill in the opponent's ``state_hash``/``nonce`` for every turn we already
-    recorded, so :func:`export_log` can produce a fully verifiable record (FR-045,
-    §5.4 mutual audit).
+    recorded, then verify every commitment hash (FR-043/E-19: mismatch = hard
+    technical disqualification, §5.4 mutual audit).
     """
+    opponent_role = opponent_of(orch.role)
     for entry in orch.opponent_log:
         key = str(entry.turn_number)
         if key not in message.payload:
@@ -65,6 +67,16 @@ def receive_final_reveal(orch: Orchestrator, message: ProtocolMessage) -> Protoc
         data = json.loads(message.payload[key])
         entry.state_hash = data["state_hash"]
         entry.nonce = data["nonce"]
+    for entry in orch.opponent_log:
+        if not entry.nonce or not entry.h_commit:
+            continue
+        if not crypto_verify(entry.state_hash, entry.move, entry.intent, entry.nonce,
+                              entry.h_commit):
+            orch._fail(
+                f"commitment hash mismatch on turn {entry.turn_number}",
+                disqualified=opponent_role,
+            )
+            return ProtocolResponse(accepted=False, reason=RejectReason.INVALID_SIGNATURE)
     return ProtocolResponse(accepted=True)
 
 

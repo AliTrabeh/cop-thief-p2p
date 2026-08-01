@@ -21,7 +21,7 @@ class _StrictConfigModel(BaseModel):
     silently ignored (PRD-0570).
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
 
 class Role(StrEnum):
