@@ -125,5 +125,5 @@ def receive_reveal(orch: Orchestrator, message: ProtocolMessage) -> ProtocolResp
             h_commit=orch._pending_opponent_commit,
         )
     )
-    orch.opponent_scent.deposit(orch.board.position_of(opponent_role))
+    orch.opponent_scent.update_turn(orch.board.position_of(opponent_role))
     return ProtocolResponse(accepted=True)

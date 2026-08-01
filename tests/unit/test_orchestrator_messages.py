@@ -65,6 +65,45 @@ def test_receive_reveal_with_illegal_move_causes_technical_loss(game_config):
     assert orch.technical_loss_role is Role.THIEF  # the opponent, not us, is disqualified
 
 
+def test_receive_reveal_decays_old_scent_before_depositing_new(game_config):
+    # FR-030: τ(t+1) = max(0, (1-ρ)·τ(t) + Δτ). Each reveal must trigger
+    # update_turn (decay + deposit), not just deposit, so old positions fade.
+    orch = make_orchestrator(game_config, Role.POLICE)
+
+    # Probe cell is at distance 2 from the first deposit site (2,3) and at distance 3
+    # from the second deposit site (1,3).  The radius is 2, so the second deposit adds
+    # zero falloff to this cell — only decay applies on the second turn.
+    probe = Coordinate(row=4, col=3)
+
+    # First reveal: thief moves N from (3,3) to (2,3); probe is exactly at radius edge.
+    orch.handle_message(
+        ProtocolMessage(
+            message_type=MessageType.REVEAL,
+            game_id="test-game",
+            turn_number=0,
+            sender_role=Role.THIEF,
+            payload={"move": "MOVE:N"},
+        )
+    )
+    intensity_after_first = orch.opponent_scent.intensity_at(probe)
+    assert intensity_after_first > 0
+
+    # Second reveal: thief moves N again from (2,3) to (1,3).
+    # probe is outside the radius-2 emission field of (1,3) so no new deposit lands
+    # there — the only change must be decay, proving update_turn was called.
+    orch.handle_message(
+        ProtocolMessage(
+            message_type=MessageType.REVEAL,
+            game_id="test-game",
+            turn_number=1,
+            sender_role=Role.THIEF,
+            payload={"move": "MOVE:N"},
+        )
+    )
+    intensity_after_second = orch.opponent_scent.intensity_at(probe)
+    assert intensity_after_second < intensity_after_first
+
+
 def test_receive_reveal_malformed_move_is_rejected(game_config):
     orch = make_orchestrator(game_config, Role.POLICE)
     response = orch.handle_message(
