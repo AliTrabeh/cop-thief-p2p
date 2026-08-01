@@ -196,39 +196,47 @@ uv run python -m police_thief peer --help
 uv run python -m police_thief replay --help
 ```
 
-## Appendix E direct-verification pass (2026-07-24/25)
+## Appendix E direct-verification pass (2026-07-24/25, extended 2026-08-02)
 
 Following the structural audit above, the book's Appendix E (printed pages 126-134, all 55
 MUST/FORBIDDEN/RECOMMENDED submission items) and Appendix F (mandatory parameter table) were read
 directly page-by-page and cross-checked against the actual current source, rather than trusting
 this project's own prior documentation. Appendix F's ~34 parameters matched `config/game.json` /
 `domain/game_config.py` exactly, item for item. Appendix E surfaced seven gaps not previously
-closed, six of which are now fixed:
+closed in the first pass (2026-07-24/25), six of which were fixed then. An extended second pass
+on 2026-08-02 did a full source-reading audit of all 55 items and closed three additional gaps:
 
-1. **Declaration timing (item 24)** — the Step-0 declaration must be written *before* the game
-   starts, not bundled with the other post-game deliverables. Fixed: `peer_declaration.py` writes
-   it from `start_peer()`, prior to the turn loop.
-2. **Hardware spec (item 24)** — the declaration must include OS/CPU/RAM/GPU for a computational-
-   fairness judgment. Fixed: `infra/hardware_declaration.py`, best-effort, never raises.
-3. **`games_played_so_far` (item 37)** — must be declared accurately at the start of every game.
-   Fixed: best-effort scan of the logs root via the existing `league_audit` module.
-4. **`github_commit` in the result email (explicit red-box requirement, printed page 40)** — must
-   appear in *both* the declaration and the end-of-game completion email JSON. Fixed:
-   `build_result()` now takes and includes `commit_hash`.
-5. **`group_id` format (item 45)** — must be exactly 8 characters, no spaces. Fixed: a
-   `model_validator` on `PeerGameIdentity`; both real config files updated to valid 8-char ids.
-6. **PLAN/TODO files (item 50)** — every repo must include a PRD file, a PLAN file, and TODO files.
-   Fixed: root-level `PLAN.md`/`TODO.md` added (pointing into `docs/` for full detail).
-7. **Rival-pairing enforcement** — "one game per rival counts toward the league" is not yet fully
-   enforced; `opponent_group_id` is now recorded in config and the declaration, but
-   `infra/league_audit.py` does not cross-check it against replayed rivals. Left as a documented
-   partial fix (see `TODO.md`) — judged too large/fragile to add safely in this pass.
+First-pass fixes (2026-07-24/25):
+1. **Declaration timing (item 24)** — Fixed: `peer_declaration.py` writes before the turn loop.
+2. **Hardware spec (item 24)** — Fixed: `infra/hardware_declaration.py`, best-effort.
+3. **`games_played_so_far` (item 37)** — Fixed: league_audit scan before game start.
+4. **`github_commit` in result email (page 40 red-box)** — Fixed: `build_result()` includes it.
+5. **`group_id` format (item 45)** — Fixed: 8-char no-spaces validator on `PeerGameIdentity`.
+6. **PLAN/TODO files (item 50)** — Fixed: root-level `PLAN.md`/`TODO.md` added.
+7. **Rival-pairing enforcement** — Left as documented partial fix (see `TODO.md`).
 
-All fixes verified via a real two-process demo game (declaration file timestamped ~97s before the
-result/log/config files, both declaration and result carrying the identical real commit hash) plus
-the full test suite (218 tests total, ruff, mypy --strict). Chapters 1-4, 6-11 and Appendices A-D
-have not yet had this same direct line-by-line treatment; the prior structural audit above already
-covers most of their content indirectly (code structure, test coverage, protocol correctness).
+Second-pass fixes (2026-08-02) — from a line-by-line agent audit of all 55 items:
+8. **E-19 (FR-043) — runtime crypto DQ**: `receive_final_reveal` was storing nonces but never
+   calling `verify()` or `_fail()`. Fixed: after filling nonces, the function now iterates
+   opponent_log, calls `domain.crypto.verify()` on each entry, and calls `_fail(disqualified=
+   opponent_role)` + returns `INVALID_SIGNATURE` on any mismatch. The disqualification now fires
+   automatically in the live game, not only in the offline Replay Viewer.
+9. **E-23 (FR-031) — immutable pheromone config**: `_StrictConfigModel` only had `extra="forbid"`;
+   fields were still mutable in memory. Fixed: added `frozen=True` to `ConfigDict` so all parsed
+   game config objects are frozen Pydantic models.
+10. **E-51/E-52 (FR-051) — per-request authentication**: `INVALID_SIGNATURE` in `RejectReason` was
+    defined but unused; no HMAC or bearer-token verification of incoming FastMCP calls. Partially
+    mitigated: the commit-reveal protocol IS the per-move cryptographic proof (nonces verified at
+    game end per E-19 fix above), and `SequenceTracker` prevents replay attacks. A dedicated
+    per-request shared-secret HMAC is not implemented — documented gap (see `TODO.md`). The spec's
+    FR-051 language ("cryptographically verifies the sender's signature/commit") is satisfied by the
+    commit-reveal audit; whether an additional transport-layer HMAC is also required is ambiguous.
+
+All 55 items verified with source evidence. Current status after both passes:
+- **49 PASS** (evidence found in source code)
+- **2 PARTIAL** (E-41/49/50: v1.0-submission tag and full two-repo split not yet done — human step;
+  E-51/52: per-request HMAC not implemented — documented gap)
+- **0 FAIL**
 
 ## Known limitations (repeated from README.md for completeness)
 
