@@ -18,7 +18,8 @@ from police_thief.domain.game_config import (
 from police_thief.domain.models import Role
 from police_thief.gui.replay_viewer import replay
 from police_thief.infra.mcp_client import MCPPeerClient
-from police_thief.infra.mcp_server import build_server
+from police_thief.infra.mcp_server import MessageMailbox, build_server
+from police_thief.infra.protocol import ProtocolResponse
 from police_thief.orchestrator import Orchestrator
 from police_thief.strategy.qlearning import QLearningPoliceBrain, QLearningThiefBrain
 
@@ -37,12 +38,22 @@ def _make_config(**overrides: object) -> GameConfig:
 
 
 async def _play_one_turn(mover: Orchestrator, mover_client: MCPPeerClient) -> None:
-    commit_message = mover.produce_commit()
-    ack = await mover_client.send(commit_message)
-    assert ack.accepted, f"opponent rejected commit: {ack.reason}"
-    reveal_message = mover.produce_reveal()
-    reveal_response = await mover_client.send(reveal_message)
-    mover.confirm_reveal_accepted(reveal_response)
+    commit_msg = mover.produce_commit()
+    commit_resp = await mover_client.send_commit(
+        role=mover.role.value,
+        step=commit_msg.turn_number,
+        h_commit=commit_msg.payload["h_commit"],
+    )
+    assert commit_resp.get("accepted"), f"opponent rejected commit: {commit_resp}"
+    reveal_msg = mover.produce_reveal()
+    reveal_resp = await mover_client.send_reveal(
+        role=mover.role.value,
+        step=reveal_msg.turn_number,
+        move=reveal_msg.payload["move"],
+        hint=reveal_msg.payload.get("hint", ""),
+        intent=reveal_msg.payload.get("intent", "truth"),
+    )
+    mover.confirm_reveal_accepted(ProtocolResponse.model_validate(reveal_resp))
 
 
 async def _run_full_game(max_iterations: int = 100) -> tuple[Orchestrator, Orchestrator]:
@@ -62,8 +73,8 @@ async def _run_full_game(max_iterations: int = 100) -> tuple[Orchestrator, Orche
         brain=QLearningThiefBrain(seed=42),
     )
 
-    police_server = build_server("qlearning-police-peer", police.handle_message)
-    thief_server = build_server("qlearning-thief-peer", thief.handle_message)
+    police_server = build_server("qlearning-police-peer", police.handle_message, MessageMailbox())
+    thief_server = build_server("qlearning-thief-peer", thief.handle_message, MessageMailbox())
     police_to_thief = MCPPeerClient(thief_server)
     thief_to_police = MCPPeerClient(police_server)
 
@@ -78,8 +89,12 @@ async def _run_full_game(max_iterations: int = 100) -> tuple[Orchestrator, Orche
 
     police_final = police.produce_final_reveal()
     thief_final = thief.produce_final_reveal()
-    await police_to_thief.send(police_final)
-    await thief_to_police.send(thief_final)
+    await police_to_thief.send_final_audit(
+        role=police_final.sender_role.value, nonces=police_final.payload
+    )
+    await thief_to_police.send_final_audit(
+        role=thief_final.sender_role.value, nonces=thief_final.payload
+    )
     return police, thief
 
 

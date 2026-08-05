@@ -168,13 +168,13 @@ async def _drive_turn_loop(
     _refresh_gui(handles, role, False)
 
     # Capture claim protocol (spec §3.5): cop sends the claim; thief awaits and acknowledges.
-    if role is Role.POLICE and orch.board.outcome is Outcome.CAUGHT:
+    if role is Role.POLICE and orch.board.outcome is Outcome.CAPTURE:
         try:
             await client.send_capture_claim(role=role.value, claimed=True)
             logger.info("sent capture claim to thief")
         except PeerUnreachableError:
             logger.warning("could not deliver capture claim to thief")
-    elif role is Role.THIEF and orch.board.outcome is Outcome.CAUGHT:
+    elif role is Role.THIEF and orch.board.outcome is Outcome.CAPTURE:
         try:
             claim = await asyncio.wait_for(mailbox.capture_claims.get(), timeout=response_timeout)
             logger.info("received capture claim from cop: claimed=%s", claim.get("claimed"))

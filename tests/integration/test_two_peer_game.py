@@ -23,7 +23,7 @@ from police_thief.domain.game_config import GameConfig
 from police_thief.domain.models import Role
 from police_thief.domain.scoring import score
 from police_thief.infra.mcp_client import MCPPeerClient
-from police_thief.infra.mcp_server import build_server
+from police_thief.infra.mcp_server import MessageMailbox, build_server
 from police_thief.orchestrator import Orchestrator
 from police_thief.strategy.heuristic import HeuristicPoliceBrain, HeuristicThiefBrain
 
@@ -79,7 +79,7 @@ def test_capture_is_detected_symmetrically_by_both_sides():
 
     # Only police -> thief traffic happens in this single-turn test, so only
     # the thief's server side is needed.
-    thief_server = build_server("thief-peer-2", thief.handle_message)
+    thief_server = build_server("thief-peer-2", thief.handle_message, MessageMailbox())
     police_to_thief = MCPPeerClient(thief_server)
 
     async def one_cop_turn() -> None:

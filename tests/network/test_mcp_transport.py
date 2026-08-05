@@ -12,10 +12,9 @@ from __future__ import annotations
 
 import asyncio
 
-from police_thief.domain.models import Role
 from police_thief.infra.mcp_client import MCPPeerClient
-from police_thief.infra.mcp_server import build_server
-from police_thief.infra.protocol import MessageType, ProtocolMessage, ProtocolResponse, RejectReason
+from police_thief.infra.mcp_server import MessageMailbox, build_server
+from police_thief.infra.protocol import ProtocolMessage, ProtocolResponse, RejectReason
 
 
 def _always_accept(message: ProtocolMessage) -> ProtocolResponse:
@@ -26,102 +25,62 @@ def _always_reject_illegal(message: ProtocolMessage) -> ProtocolResponse:
     return ProtocolResponse(accepted=False, reason=RejectReason.ILLEGAL_MOVE)
 
 
-def test_successful_round_trip():
-    server = build_server("test-peer", _always_accept)
+def test_successful_commit_round_trip():
+    server = build_server("test-peer", _always_accept, MessageMailbox())
     client = MCPPeerClient(server)
-    message = ProtocolMessage(
-        message_type=MessageType.COMMIT,
-        game_id="g1",
-        turn_number=0,
-        sender_role=Role.POLICE,
-        payload={"h_commit": "abc123"},
-    )
-    response = asyncio.run(client.send(message))
-    assert response.accepted
+    result = asyncio.run(client.send_commit(role="police", step=0, h_commit="abc123"))
+    assert result.get("accepted") is True
 
 
-def test_handler_rejection_is_returned_not_raised():
-    server = build_server("test-peer", _always_reject_illegal)
+def test_reveal_rejection_is_returned_not_raised():
+    server = build_server("test-peer", _always_reject_illegal, MessageMailbox())
     client = MCPPeerClient(server)
-    message = ProtocolMessage(
-        message_type=MessageType.REVEAL,
-        game_id="g1",
-        turn_number=0,
-        sender_role=Role.THIEF,
-        payload={"move": "N"},
+    result = asyncio.run(
+        client.send_reveal(role="thief", step=0, move="MOVE:N", hint="", intent="truth")
     )
-    response = asyncio.run(client.send(message))
-    assert not response.accepted
-    assert response.reason is RejectReason.ILLEGAL_MOVE
+    assert result.get("accepted") is False
+    assert result.get("reason") == RejectReason.ILLEGAL_MOVE.value
 
 
-def test_duplicate_turn_is_rejected_idempotently():
-    server = build_server("test-peer", _always_accept)
+def test_duplicate_commit_is_rejected():
+    server = build_server("test-peer", _always_accept, MessageMailbox())
     client = MCPPeerClient(server)
-    message = ProtocolMessage(
-        message_type=MessageType.COMMIT,
-        game_id="g1",
-        turn_number=0,
-        sender_role=Role.POLICE,
-        payload={"h_commit": "abc123"},
-    )
-    first = asyncio.run(client.send(message))
-    second = asyncio.run(client.send(message))
-    assert first.accepted
-    assert not second.accepted
-    assert second.reason is RejectReason.DUPLICATE
+    first = asyncio.run(client.send_commit(role="police", step=0, h_commit="abc123"))
+    second = asyncio.run(client.send_commit(role="police", step=0, h_commit="abc123"))
+    assert first.get("accepted") is True
+    assert second.get("accepted") is False
+    assert second.get("reason") == RejectReason.DUPLICATE.value
 
 
-def test_stale_turn_is_rejected():
-    server = build_server("test-peer", _always_accept)
+def test_stale_commit_is_rejected():
+    server = build_server("test-peer", _always_accept, MessageMailbox())
     client = MCPPeerClient(server)
-    later = ProtocolMessage(
-        message_type=MessageType.COMMIT,
-        game_id="g1",
-        turn_number=5,
-        sender_role=Role.POLICE,
-        payload={},
+    asyncio.run(client.send_commit(role="police", step=5, h_commit="abc"))
+    stale = asyncio.run(client.send_commit(role="police", step=2, h_commit="abc"))
+    assert stale.get("accepted") is False
+    assert stale.get("reason") == RejectReason.STALE_TURN.value
+
+
+def test_invalid_intent_on_reveal_is_rejected():
+    server = build_server("test-peer", _always_accept, MessageMailbox())
+    client = MCPPeerClient(server)
+    result = asyncio.run(
+        client.send_reveal(role="police", step=0, move="MOVE:N", hint="", intent="maybe")
     )
-    stale = ProtocolMessage(
-        message_type=MessageType.COMMIT,
-        game_id="g1",
-        turn_number=2,
-        sender_role=Role.POLICE,
-        payload={},
-    )
-    assert asyncio.run(client.send(later)).accepted
-    stale_response = asyncio.run(client.send(stale))
-    assert not stale_response.accepted
-    assert stale_response.reason is RejectReason.STALE_TURN
+    assert result.get("accepted") is False
 
 
-def test_malformed_payload_is_rejected_not_a_server_crash():
-    server = build_server("test-peer", _always_accept)
+def test_unknown_role_on_commit_is_rejected():
+    server = build_server("test-peer", _always_accept, MessageMailbox())
 
-    async def send_raw() -> dict:
+    async def send_bad_role() -> dict:
         from fastmcp import Client
 
         async with Client(server) as raw_client:
             result = await raw_client.call_tool(
-                "submit_message", {"message": {"not": "a valid message"}}
+                "receive_commit", {"role": "villain", "step": 0, "h_commit": "abc"}
             )
-            return result.data
+            return result.data  # type: ignore[return-value]
 
-    data = asyncio.run(send_raw())
-    assert data["accepted"] is False
-    assert data["reason"] == RejectReason.MALFORMED.value
-
-
-def test_oversized_payload_is_rejected():
-    server = build_server("test-peer", _always_accept, max_payload_fields=2)
-    client = MCPPeerClient(server)
-    message = ProtocolMessage(
-        message_type=MessageType.COMMIT,
-        game_id="g1",
-        turn_number=0,
-        sender_role=Role.POLICE,
-        payload={"a": "1", "b": "2", "c": "3"},
-    )
-    response = asyncio.run(client.send(message))
-    assert not response.accepted
-    assert response.reason is RejectReason.MALFORMED
+    data = asyncio.run(send_bad_role())
+    assert data.get("accepted") is False
