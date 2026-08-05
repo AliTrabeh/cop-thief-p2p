@@ -112,8 +112,14 @@ def test_receive_final_reveal_tampered_hash_causes_technical_loss(game_config):
     orch = make_orchestrator(game_config, Role.POLICE)
     h_commit, _correct_nonce = crypto_commit("state", "MOVE:N", "truth")
     orch.opponent_log.append(
-        LogEntry(turn_number=0, role=Role.THIEF, state_hash="state",
-                 move="MOVE:N", intent="truth", h_commit=h_commit)
+        LogEntry(
+            turn_number=0,
+            role=Role.THIEF,
+            state_hash="state",
+            move="MOVE:N",
+            intent="truth",
+            h_commit=h_commit,
+        )
     )
     response = orch.handle_message(
         ProtocolMessage(

@@ -97,6 +97,13 @@ async def _drive_turn_loop(
         await client.send(orch.produce_final_reveal())
     except PeerUnreachableError:
         logger.warning("could not deliver final reveal; opponent may already be gone")
+    else:
+        # Our FINAL_REVEAL was delivered successfully; give the opponent's server a
+        # brief window to send *their* FINAL_REVEAL back so our server can process it
+        # and record their nonces before we shut down.  Without this, the server task
+        # is cancelled (in run_peer's finally block) before the opponent's reply arrives
+        # and the log ends up with null nonces → TAMPERED in the Replay Viewer.
+        await asyncio.sleep(2.0)
 
 
 async def run_peer(

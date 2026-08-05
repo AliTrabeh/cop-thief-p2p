@@ -70,8 +70,9 @@ def receive_final_reveal(orch: Orchestrator, message: ProtocolMessage) -> Protoc
     for entry in orch.opponent_log:
         if not entry.nonce or not entry.h_commit:
             continue
-        if not crypto_verify(entry.state_hash, entry.move, entry.intent, entry.nonce,
-                              entry.h_commit):
+        if not crypto_verify(
+            entry.state_hash, entry.move, entry.intent, entry.nonce, entry.h_commit
+        ):
             orch._fail(
                 f"commitment hash mismatch on turn {entry.turn_number}",
                 disqualified=opponent_role,

@@ -75,13 +75,19 @@ def test_start_ngrok_tunnel_raises_if_process_exits_early():
     fake_process = FakeProcess(exit_code=1)  # already dead before the first poll
 
     async def run() -> None:
-        with pytest.raises(TunnelError, match="exited early"):
-            await start_ngrok_tunnel(
-                8801,
-                which_fn=lambda _name: "/usr/bin/ngrok",
-                process_factory=lambda _args: fake_process,
-                http_client=httpx.AsyncClient(),
-                startup_timeout=1.0,
-            )
+        # Use MockTransport + async-with so the client is closed before the event
+        # loop shuts down — avoids hanging on Windows due to pending SSL resources.
+        # The client is never actually called (process dies before any HTTP poll).
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _r: tunnels_response([]))
+        ) as client:
+            with pytest.raises(TunnelError, match="exited early"):
+                await start_ngrok_tunnel(
+                    8801,
+                    which_fn=lambda _name: "/usr/bin/ngrok",
+                    process_factory=lambda _args: fake_process,
+                    http_client=client,
+                    startup_timeout=1.0,
+                )
 
     asyncio.run(run())
