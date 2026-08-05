@@ -13,7 +13,7 @@ from police_thief.config import PeerConfig
 from police_thief.domain.models import Role
 from police_thief.logging_setup import get_logger
 from police_thief.strategy.base import BrainBase, load_brain_class
-from police_thief.strategy.heuristic import HeuristicPoliceBrain, HeuristicThiefBrain
+from police_thief.strategy.smart import SmartPoliceBrain, SmartThiefBrain
 from police_thief.strategy.llm_bluff import BanterProvider, build_banter_provider
 
 logger = get_logger("peer_runtime")
@@ -48,7 +48,7 @@ def check_port_available(host: str, port: int) -> None:
 
 
 def _default_brain(role: Role) -> BrainBase:
-    return HeuristicPoliceBrain() if role is Role.POLICE else HeuristicThiefBrain()
+    return SmartPoliceBrain() if role is Role.POLICE else SmartThiefBrain()
 
 
 def resolve_brain(role: Role, strategy_spec: str | None) -> BrainBase:

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import importlib
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from police_thief.domain.board import BoardState
 from police_thief.domain.models import Coordinate, Direction, Role
@@ -41,6 +41,10 @@ class BeliefView:
     can_place_barrier: bool
     barriers_remaining: int
     belief: dict[Coordinate, float]
+    # Exposed so brains can do BFS respecting placed barriers (default=empty/0
+    # preserves backward compat with tests that construct BeliefView directly).
+    barriers: frozenset[Coordinate] = field(default_factory=frozenset)
+    grid_size: int = 0
 
 
 def build_belief_view(board: BoardState, opponent_scent: ScentField, role: Role) -> BeliefView:
@@ -70,6 +74,8 @@ def build_belief_view(board: BoardState, opponent_scent: ScentField, role: Role)
         ),
         barriers_remaining=cfg.movement_and_barriers.max_barriers - board.barriers_placed,
         belief=b,
+        barriers=frozenset(board.barriers),
+        grid_size=cfg.board_and_agents.grid_size,
     )
 
 
