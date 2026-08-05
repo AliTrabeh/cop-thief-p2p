@@ -23,12 +23,12 @@ from police_thief.domain.board import BoardState
 from police_thief.domain.game_config import GameConfig
 from police_thief.domain.models import Role
 from police_thief.infra.mcp_client import MCPPeerClient
-from police_thief.infra.mcp_server import build_server
+from police_thief.infra.mcp_server import MessageMailbox, build_server
 from police_thief.infra.tunnel import TunnelError, TunnelHandle, start_tunnel
 from police_thief.infra.vcs import current_commit_hash
 from police_thief.logging_setup import get_logger
 from police_thief.orchestrator import Orchestrator
-from police_thief.peer_declaration import write_pre_game_declaration
+from police_thief.peer_declaration import make_step0_payload, write_pre_game_declaration
 from police_thief.peer_setup import PeerRuntimeError, check_port_available, resolve_banter_provider
 from police_thief.peer_setup import resolve_brain as _resolve_brain
 from police_thief.strategy.llm_bluff import BanterProvider
@@ -48,8 +48,11 @@ class PeerHandles:
     server_task: asyncio.Task[None]
     tunnel: TunnelHandle | None
     client: MCPPeerClient
+    mailbox: MessageMailbox
     view: LiveView | None
     commit_hash: str
+    declaration: dict
+    declaration_signature: str
 
 
 async def start_peer(
@@ -62,8 +65,9 @@ async def start_peer(
         raise PeerRuntimeError(str(exc)) from exc
 
     commit_hash = current_commit_hash()
-    if output_dir is not None:
-        write_pre_game_declaration(output_dir, peer_config, game_id, commit_hash, game_config)
+    declaration, declaration_signature = make_step0_payload(
+        peer_config, game_id, commit_hash, game_config, output_dir=output_dir
+    )
 
     strategy_spec = (
         peer_config.strategy.police_class
@@ -83,7 +87,8 @@ async def start_peer(
         brain=brain,
     )
     check_port_available("0.0.0.0", peer_config.network.my_port)
-    server = build_server(f"{role.value}-peer", orch.handle_message)
+    mailbox = MessageMailbox()
+    server = build_server(f"{role.value}-peer", orch.handle_message, mailbox)
     server_task = asyncio.create_task(
         server.run_http_async(host="0.0.0.0", port=peer_config.network.my_port, show_banner=False)
     )
@@ -139,6 +144,9 @@ async def start_peer(
         server_task=server_task,
         tunnel=tunnel,
         client=client,
+        mailbox=mailbox,
         view=view,
         commit_hash=commit_hash,
+        declaration=declaration,
+        declaration_signature=declaration_signature,
     )

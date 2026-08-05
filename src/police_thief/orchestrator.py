@@ -98,9 +98,9 @@ class Orchestrator:
         """Decide an action via the strategy module and commit to it."""
         return _turn.produce_commit(self)
 
-    def produce_reveal(self) -> ProtocolMessage:
-        """COMMITTING -> AWAITING_REVEAL: reveal move+hint (nonce still hidden)."""
-        return _turn.produce_reveal(self)
+    def produce_reveal(self, hint: str = "") -> ProtocolMessage:
+        """COMMITTING -> AWAITING_REVEAL: reveal move + hint, Nonce hidden (§5.3.2)."""
+        return _turn.produce_reveal(self, hint=hint)
 
     def confirm_reveal_accepted(self, response: ProtocolResponse) -> None:
         """AWAITING_REVEAL -> VERIFYING -> WAITING_FOR_OPPONENT: apply our own

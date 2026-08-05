@@ -40,13 +40,14 @@ def produce_commit(orch: Orchestrator) -> ProtocolMessage:
         raise TechnicalLossError(orch.technical_loss_reason or "strategy error") from exc
     state_hash = hash_state(canonical_board_snapshot(orch.board))
     move_str = action_to_move_str(action)
-    h_commit, nonce = crypto_commit(state=state_hash, move=move_str, intent="truth")
+    intent = orch.brain._decide_intent(view)
+    h_commit, nonce = crypto_commit(state=state_hash, move=move_str, intent=intent)
     entry = LogEntry(
         turn_number=orch.turn_number,
         role=orch.role,
         state_hash=state_hash,
         move=move_str,
-        intent="truth",
+        intent=intent,
         h_commit=h_commit,
         nonce=nonce,
     )
@@ -61,18 +62,19 @@ def produce_commit(orch: Orchestrator) -> ProtocolMessage:
     )
 
 
-def produce_reveal(orch: Orchestrator) -> ProtocolMessage:
-    """COMMITTING -> AWAITING_REVEAL: reveal move+hint (nonce still hidden)."""
+def produce_reveal(orch: Orchestrator, hint: str = "") -> ProtocolMessage:
+    """COMMITTING -> AWAITING_REVEAL: reveal move + hint (Nonce still hidden, spec §5.3.2)."""
     if orch._pending is None:
         raise TechnicalLossError("produce_reveal() called before produce_commit()")
     orch.phase.transition(GamePhase.AWAITING_REVEAL)
     entry = orch._pending.entry
+    entry.hint = hint
     return ProtocolMessage(
         message_type=MessageType.REVEAL,
         game_id=orch.game_id,
         turn_number=orch.turn_number,
         sender_role=orch.role,
-        payload={"move": entry.move},
+        payload={"move": entry.move, "hint": hint, "intent": entry.intent},
     )
 
 

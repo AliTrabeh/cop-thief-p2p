@@ -48,6 +48,7 @@ def canonical_board_snapshot(board: BoardState) -> str:
 class LogEntry:
     """One committed-then-revealed action; ``nonce`` is filled in only at
     end-of-game (FINAL_REVEAL), matching the book's own timing (§5.3.2).
+    ``hint`` is the verbal bluff text sent in the Reveal step (spec §5.3.2).
     """
 
     turn_number: int
@@ -57,6 +58,7 @@ class LogEntry:
     intent: str
     h_commit: str
     nonce: str | None = None
+    hint: str = ""
 
 
 @dataclass

@@ -92,6 +92,19 @@ class BrainBase(ABC):
         """
         return None
 
+    def _decide_intent(self, view: BeliefView) -> str:
+        """Optional hook for the bluff/truth intent flag (spec §5.3.1).
+
+        Return ``"truth"`` if the hint to be sent in the Reveal step is honest,
+        or ``"lie"`` if it is a deliberate bluff. The return value becomes the
+        ``intent`` field of H_commit = SHA256(State||Move||Intent||Nonce) so it
+        is cryptographically committed before the hint text is revealed.
+
+        Defaults to ``"truth"`` — subclasses that implement bluffing should
+        override this to return ``"lie"`` when the LLM-generated hint is a bluff.
+        """
+        return "truth"
+
     def decide(self, view: BeliefView) -> Action:
         action = self._decide_move(view)
         if action is not None:

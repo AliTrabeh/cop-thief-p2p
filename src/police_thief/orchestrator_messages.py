@@ -93,6 +93,7 @@ def export_log(orch: Orchestrator) -> list[dict[str, object]]:
             "role": e.role.value,
             "state_hash": e.state_hash,
             "move": e.move,
+            "hint": e.hint,
             "intent": e.intent,
             "h_commit": e.h_commit,
             "nonce": e.nonce,
@@ -134,7 +135,8 @@ def receive_reveal(orch: Orchestrator, message: ProtocolMessage) -> ProtocolResp
             role=opponent_role,
             state_hash="",  # unknown until FINAL_REVEAL
             move=move_str,
-            intent="truth",
+            intent=message.payload.get("intent", "truth"),
+            hint=message.payload.get("hint", ""),
             h_commit=orch._pending_opponent_commit,
         )
     )
