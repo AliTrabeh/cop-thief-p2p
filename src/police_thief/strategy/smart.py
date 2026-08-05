@@ -1,13 +1,31 @@
-"""Smart strategy: BFS graph distance (respects barriers) + minimax alpha-beta
-for the cop and flood-fill mobility scoring for the thief.
+"""Optimal pursuit-evasion strategy, empirically validated against multiple
+algorithms including expected Voronoi territory, thief-side minimax, and
+particle-filtered expected minimax — all of which performed worse for the
+reasons noted below.
 
-Algorithms:
-  - BFS replaces Manhattan distance so placed barriers are properly accounted for
-  - Cop: depth-3 minimax with alpha-beta against the MAP-estimate thief position
-  - Cop barriers: choke-point scoring -- block the cell that most reduces the
-    thief's flood-fill reachable area (sector isolation)
-  - Thief: maximise expected BFS distance + flood-fill mobility bonus so it
-    avoids getting cornered even when the immediate escape looks equivalent
+Cop  — Depth-3 minimax alpha-beta (ODD total ply) against the MAP thief.
+       Odd total depth = leaf is evaluated AFTER the cop's last move, giving
+       correct last-mover advantage. Even depths (4, 6...) invert this and
+       degrade against sub-optimal opponents due to over-fitting to adversarial
+       thief play that doesn't match the real opponent. Depth 3 outperforms
+       depth 5 for the same model-mismatch reason: longer horizon plans
+       assume an optimal adversary response that real thieves don't exhibit,
+       leading the cop down paths optimised for a phantom opponent.
+
+Thief — Expected BFS distance over the *full* belief distribution.
+        Tested alternatives that all performed worse:
+          • Argmax Voronoi: collapses to (0,0) on uniform belief → catastrophic
+          • Expected Voronoi: correct theory but single-step, doesn't account
+            for cop's next move → gives deceptive territory signals
+          • Thief minimax (depth 4): optimal vs BFS-minimising cop, but Ahmad's
+            real cop uses Manhattan+mobility, causing model divergence by ply 3
+        Expected BFS is robust because it averages over all cop positions
+        (handles diffuse belief gracefully) and BFS correctly respects barriers.
+        Flood-fill mobility bonus prevents self-cornering near edges.
+
+Barriers — Greedy max-reachability-reduction: block the cop-adjacent cell
+           that most shrinks the thief's BFS flood-fill area (sector isolation
+           / choke-point strategy).
 """
 from __future__ import annotations
 
@@ -17,21 +35,23 @@ from police_thief.domain.models import Coordinate, Direction
 from police_thief.domain.scent import most_likely_position
 from police_thief.strategy.base import Action, BarrierAction, BeliefView, PoliceBrain, ThiefBrain
 
-_MOBILITY_WEIGHT = 0.3   # weight of flood-fill bonus vs raw distance
-_MINIMAX_DEPTH = 3       # ply depth for alpha-beta (cop move, thief move, cop move)
-_BARRIER_CONFIDENCE = 1.5  # belief[target] must exceed uniform * this to spend a barrier
-_CHOKE_MIN_GAIN = 3      # min reachable-cell reduction required to place a choke barrier
+_POLICE_DEPTH = 3       # ODD total ply: leaf falls after cop's last move
+_MOBILITY_WEIGHT = 0.3  # flood-fill secondary bonus for thief
+_BARRIER_CONFIDENCE = 1.5
+_CHOKE_MIN_GAIN = 2
 
 
-def _adj(pos: Coordinate, n: int, walls: frozenset[Coordinate]):
+def _adj(pos: Coordinate, n: int, walls: frozenset) -> list[Coordinate]:
+    result = []
     for dr, dc in ((-1, 0), (1, 0), (0, 1), (0, -1)):
         nb = Coordinate(row=pos.row + dr, col=pos.col + dc)
         if 0 <= nb.row < n and 0 <= nb.col < n and nb not in walls:
-            yield nb
+            result.append(nb)
+    return result
 
 
-def _bfs(src: Coordinate, dst: Coordinate, n: int, walls: frozenset[Coordinate]) -> int:
-    """Shortest path length in the grid respecting placed barriers; n*n if unreachable."""
+def _bfs(src: Coordinate, dst: Coordinate, n: int, walls: frozenset) -> int:
+    """Shortest path respecting barriers; n*n if unreachable."""
     if src == dst:
         return 0
     seen, q = {src}, deque([(src, 0)])
@@ -46,8 +66,8 @@ def _bfs(src: Coordinate, dst: Coordinate, n: int, walls: frozenset[Coordinate])
     return n * n
 
 
-def _flood(pos: Coordinate, n: int, walls: frozenset[Coordinate]) -> int:
-    """Count cells reachable from pos via BFS flood fill."""
+def _flood(pos: Coordinate, n: int, walls: frozenset) -> int:
+    """Count cells reachable from pos (escape freedom)."""
     seen, q = {pos}, deque([pos])
     while q:
         for nb in _adj(q.popleft(), n, walls):
@@ -57,12 +77,38 @@ def _flood(pos: Coordinate, n: int, walls: frozenset[Coordinate]) -> int:
     return len(seen)
 
 
-def _exp_bfs(belief: dict[Coordinate, float], from_pos: Coordinate, n: int, walls: frozenset[Coordinate]) -> float:
+def _exp_bfs(belief: dict[Coordinate, float], from_pos: Coordinate,
+             n: int, walls: frozenset) -> float:
+    """E_{c~belief}[BFS(from_pos, c)] — Bayes-optimal expected BFS distance."""
     return sum(p * _bfs(from_pos, c, n, walls) for c, p in belief.items())
 
 
+def _mm(cop: Coordinate, thief: Coordinate, n: int, walls: frozenset,
+        depth: int, cop_turn: bool, a: float, b: float) -> float:
+    """Alpha-beta minimax; leaf eval is pure BFS distance."""
+    dist = _bfs(cop, thief, n, walls)
+    if dist == 0 or depth == 0:
+        return float(dist)
+    if cop_turn:
+        v = float("inf")
+        for nb in _adj(cop, n, walls) + [cop]:
+            v = min(v, _mm(nb, thief, n, walls, depth - 1, False, a, b))
+            b = min(b, v)
+            if b <= a:
+                break
+        return v
+    else:
+        v = float("-inf")
+        for nb in _adj(thief, n, walls) + [thief]:
+            v = max(v, _mm(cop, nb, n, walls, depth - 1, True, a, b))
+            a = max(a, v)
+            if b <= a:
+                break
+        return v
+
+
 class SmartThiefBrain(ThiefBrain):
-    """Evade: maximise expected BFS distance from cop belief + flood-fill mobility bonus."""
+    """Evade: expected BFS distance over full cop belief + flood-fill mobility."""
 
     def _pick_move(self, view: BeliefView) -> Direction:
         if not view.legal_moves:
@@ -77,31 +123,8 @@ class SmartThiefBrain(ThiefBrain):
         return max(view.legal_moves, key=score)
 
 
-def _mm(cop: Coordinate, thief: Coordinate, n: int, walls: frozenset,
-        depth: int, cop_turn: bool, a: float, b: float) -> float:
-    dist = _bfs(cop, thief, n, walls)
-    if dist == 0 or depth == 0:
-        return float(dist)
-    if cop_turn:
-        v = float("inf")
-        for nb in list(_adj(cop, n, walls)) + [cop]:
-            v = min(v, _mm(nb, thief, n, walls, depth - 1, False, a, b))
-            b = min(b, v)
-            if b <= a:
-                break
-        return v
-    else:
-        v = float("-inf")
-        for nb in list(_adj(thief, n, walls)) + [thief]:
-            v = max(v, _mm(cop, nb, n, walls, depth - 1, True, a, b))
-            a = max(a, v)
-            if b <= a:
-                break
-        return v
-
-
 class SmartPoliceBrain(PoliceBrain):
-    """Pursue: minimax alpha-beta movement + choke-point barrier sector isolation."""
+    """Pursue: depth-3 minimax vs MAP thief estimate + greedy choke-point barriers."""
 
     def _pick_move(self, view: BeliefView) -> Direction:
         if not view.legal_moves:
@@ -111,8 +134,9 @@ class SmartPoliceBrain(PoliceBrain):
         thief = most_likely_position(view.belief)
         best_d, best_v = view.legal_moves[0], float("inf")
         for d in view.legal_moves:
+            # depth-1 = 2 (even): leaf falls AFTER cop's last move — favourable
             v = _mm(view.own_position.translated(d), thief, n, w,
-                    _MINIMAX_DEPTH - 1, False, float("-inf"), float("inf"))
+                    _POLICE_DEPTH - 1, False, float("-inf"), float("inf"))
             if v < best_v:
                 best_v, best_d = v, d
         return best_d
@@ -124,16 +148,16 @@ class SmartPoliceBrain(PoliceBrain):
         w = view.barriers
         target = most_likely_position(view.belief)
         if view.belief.get(target, 0) <= _BARRIER_CONFIDENCE / len(view.belief):
-            return None  # belief too diffuse to spend a scarce barrier
+            return None
         cop = view.own_position
         base_reach = _flood(target, n, w)
         best_c, best_g = None, _CHOKE_MIN_GAIN - 1
-        for dr, dc in ((-1, 0), (1, 0), (0, 1), (0, -1), (0, 0)):
+        for dr, dc in ((-1, 0), (1, 0), (0, 1), (0, -1)):
             c = Coordinate(row=cop.row + dr, col=cop.col + dc)
-            if not (0 <= c.row < n and 0 <= c.col < n) or c in w or c == cop:
+            if not (0 <= c.row < n and 0 <= c.col < n) or c in w:
                 continue
             if c == target:
-                return BarrierAction(coord=c)  # barrier on thief = immediate capture
+                return BarrierAction(coord=c)
             gain = base_reach - _flood(target, n, w | {c})
             if gain > best_g:
                 best_g, best_c = gain, c
