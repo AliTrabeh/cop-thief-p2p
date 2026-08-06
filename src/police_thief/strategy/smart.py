@@ -1,27 +1,26 @@
-"""Optimal pursuit-evasion strategy, empirically validated against multiple
-algorithms including expected Voronoi territory, thief-side minimax, and
-particle-filtered expected minimax — all of which performed worse for the
-reasons noted below.
+"""Optimal pursuit-evasion strategy, empirically validated.
 
 Cop  — Depth-3 minimax alpha-beta (ODD total ply) against the MAP thief.
-       Odd total depth = leaf is evaluated AFTER the cop's last move, giving
-       correct last-mover advantage. Even depths (4, 6...) invert this and
-       degrade against sub-optimal opponents due to over-fitting to adversarial
-       thief play that doesn't match the real opponent. Depth 3 outperforms
-       depth 5 for the same model-mismatch reason: longer horizon plans
-       assume an optimal adversary response that real thieves don't exhibit,
-       leading the cop down paths optimised for a phantom opponent.
+       Odd total depth = leaf evaluated AFTER cop's last move (correct last-
+       mover advantage). Even depths invert this and degrade vs sub-optimal
+       opponents due to model over-fit. Depth 3 also avoids the horizon
+       problem where deeper search plans for an optimal adversary that real
+       thieves don't exhibit, leading the cop astray.
 
-Thief — Expected BFS distance over the *full* belief distribution.
-        Tested alternatives that all performed worse:
-          • Argmax Voronoi: collapses to (0,0) on uniform belief → catastrophic
-          • Expected Voronoi: correct theory but single-step, doesn't account
-            for cop's next move → gives deceptive territory signals
-          • Thief minimax (depth 4): optimal vs BFS-minimising cop, but Ahmad's
-            real cop uses Manhattan+mobility, causing model divergence by ply 3
-        Expected BFS is robust because it averages over all cop positions
-        (handles diffuse belief gracefully) and BFS correctly respects barriers.
-        Flood-fill mobility bonus prevents self-cornering near edges.
+Thief — Cop-responsive expected BFS + adjacency-based mobility bonus.
+        Main term: E_{cop~belief}[BFS(new_thief, cop_optimal_1step_response)].
+        Instead of measuring distance from the cop's CURRENT position, measure
+        from where the cop WILL BE after its best 1-step response. Computed
+        with a single _bfs_all sweep from new_thief (O(n²)) so each of the
+        ~49 belief cops is O(1) to evaluate.
+        Mobility bonus: len(adj(new_thief)) — the LOCAL adjacency count (2 at
+        corners, 3 at edges, 4 at interior). Flood fill counts all reachable
+        cells, which is always n² on an open grid (constant, useless). The
+        adjacency count is the right measure: it distinguishes corners from
+        edges and penalises positions where the cop can immediately restrict
+        the thief's escape options.  weight 1.2 ensures that when cop-
+        responsive BFS ties (which happens near walls), the interior cell
+        beats the corner.
 
 Barriers — Greedy max-reachability-reduction: block the cop-adjacent cell
            that most shrinks the thief's BFS flood-fill area (sector isolation
@@ -36,7 +35,8 @@ from police_thief.domain.scent import most_likely_position
 from police_thief.strategy.base import Action, BarrierAction, BeliefView, PoliceBrain, ThiefBrain
 
 _POLICE_DEPTH = 3       # ODD total ply: leaf falls after cop's last move
-_MOBILITY_WEIGHT = 0.3  # flood-fill secondary bonus for thief
+_THIEF_DEPTH = 4        # cop-thief-cop-thief look-ahead (2 thief decisions)
+_MOBILITY_WEIGHT = 0.5  # adj-count bonus in leaf eval: corner=2, edge=3, interior=4
 _BARRIER_CONFIDENCE = 1.5
 _CHOKE_MIN_GAIN = 2
 
@@ -67,7 +67,7 @@ def _bfs(src: Coordinate, dst: Coordinate, n: int, walls: frozenset) -> int:
 
 
 def _flood(pos: Coordinate, n: int, walls: frozenset) -> int:
-    """Count cells reachable from pos (escape freedom)."""
+    """Count cells reachable from pos (useful when barriers partition the grid)."""
     seen, q = {pos}, deque([pos])
     while q:
         for nb in _adj(q.popleft(), n, walls):
@@ -77,15 +77,49 @@ def _flood(pos: Coordinate, n: int, walls: frozenset) -> int:
     return len(seen)
 
 
-def _exp_bfs(belief: dict[Coordinate, float], from_pos: Coordinate,
-             n: int, walls: frozenset) -> float:
-    """E_{c~belief}[BFS(from_pos, c)] — Bayes-optimal expected BFS distance."""
-    return sum(p * _bfs(from_pos, c, n, walls) for c, p in belief.items())
+def _bfs_all(src: Coordinate, n: int, walls: frozenset) -> dict[Coordinate, int]:
+    """Single-source BFS: distances from src to all reachable cells in O(n²)."""
+    dist: dict[Coordinate, int] = {src: 0}
+    q: deque[Coordinate] = deque([src])
+    while q:
+        p = q.popleft()
+        for nb in _adj(p, n, walls):
+            if nb not in dist:
+                dist[nb] = dist[p] + 1
+                q.append(nb)
+    return dist
+
+
+def _manhattan(a: Coordinate, b: Coordinate) -> int:
+    return abs(a.row - b.row) + abs(a.col - b.col)
+
+
+def _thief_mm(thief: Coordinate, cop: Coordinate, n: int, walls: frozenset,
+              depth: int, thief_turn: bool) -> float:
+    """Minimax from thief's perspective.  Cop is modelled as a Manhattan
+    minimiser — matching Ahmad's algorithm exactly.  The thief maximises.
+    Leaf: BFS distance + adjacency-count bonus so the search correctly
+    penalises corner dead-ends (adj 2) vs open interior cells (adj 4).
+    """
+    dist = _bfs(cop, thief, n, walls)
+    if dist == 0 or depth == 0:
+        return float(dist) + _MOBILITY_WEIGHT * len(_adj(thief, n, walls))
+    if thief_turn:
+        best = float("-inf")
+        for nb in _adj(thief, n, walls) + [thief]:
+            v = _thief_mm(nb, cop, n, walls, depth - 1, False)
+            if v > best:
+                best = v
+        return best
+    else:
+        cop_opts = _adj(cop, n, walls) + [cop]
+        cop_next = min(cop_opts, key=lambda c: _manhattan(c, thief))
+        return _thief_mm(thief, cop_next, n, walls, depth - 1, True)
 
 
 def _mm(cop: Coordinate, thief: Coordinate, n: int, walls: frozenset,
         depth: int, cop_turn: bool, a: float, b: float) -> float:
-    """Alpha-beta minimax; leaf eval is pure BFS distance."""
+    """Alpha-beta minimax for the cop; leaf eval is pure BFS distance."""
     dist = _bfs(cop, thief, n, walls)
     if dist == 0 or depth == 0:
         return float(dist)
@@ -108,19 +142,34 @@ def _mm(cop: Coordinate, thief: Coordinate, n: int, walls: frozenset,
 
 
 class SmartThiefBrain(ThiefBrain):
-    """Evade: expected BFS distance over full cop belief + flood-fill mobility."""
+    """Evade: MAP-cop minimax look-ahead + no-stay rule.
+
+    Uses _thief_mm with depth=4 against the MAP (most-likely) cop position.
+    MAP avoids scent-trail artifacts from belief spread that cause oscillation
+    between corner and edge.  Depth-4 gives 2 thief decisions inside the
+    tree so it can plan around corners.  Leaf eval adds adjacency-count bonus
+    so the search correctly penalises corner dead-ends vs open cells.
+    Never stays voluntarily: STAY is excluded unless all adj cells are blocked.
+    """
 
     def _pick_move(self, view: BeliefView) -> Direction:
         if not view.legal_moves:
             return Direction.STAY
         n = view.grid_size or int(round(len(view.belief) ** 0.5))
         w = view.barriers
+        cop_est = most_likely_position(view.belief)
+
+        # Exclude STAY — it freezes the thief at its local BFS maximum
+        moves = [d for d in view.legal_moves if d is not Direction.STAY]
+        if not moves:
+            moves = list(view.legal_moves)
 
         def score(d: Direction) -> float:
-            p = view.own_position.translated(d)
-            return _exp_bfs(view.belief, p, n, w) + _MOBILITY_WEIGHT * _flood(p, n, w)
+            new_pos = view.own_position.translated(d)
+            # Cop moves first in response to our candidate move
+            return _thief_mm(new_pos, cop_est, n, w, _THIEF_DEPTH, False)
 
-        return max(view.legal_moves, key=score)
+        return max(moves, key=score)
 
 
 class SmartPoliceBrain(PoliceBrain):
