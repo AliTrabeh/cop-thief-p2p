@@ -2,25 +2,24 @@
 
 Cop  — Depth-3 minimax alpha-beta (ODD total ply) against the MAP thief.
        Odd total depth = leaf evaluated AFTER cop's last move (correct last-
-       mover advantage). Even depths invert this and degrade vs sub-optimal
-       opponents due to model over-fit. Depth 3 also avoids the horizon
-       problem where deeper search plans for an optimal adversary that real
-       thieves don't exhibit, leading the cop astray.
+       mover advantage).  MAP (argmax belief) is the right target: the belief
+       tracker concentrates probability near the thief's real position within
+       a few turns, so argmax is nearly always the true position.  Expected
+       minimax over K positions dilutes pursuit when belief is spread and was
+       empirically worse.
 
-Thief — Cop-responsive expected BFS + adjacency-based mobility bonus.
-        Main term: E_{cop~belief}[BFS(new_thief, cop_optimal_1step_response)].
-        Instead of measuring distance from the cop's CURRENT position, measure
-        from where the cop WILL BE after its best 1-step response. Computed
-        with a single _bfs_all sweep from new_thief (O(n²)) so each of the
-        ~49 belief cops is O(1) to evaluate.
+Thief — BFS-optimal cop model + adjacency mobility bonus.
+        _thief_mm models the cop as a BFS minimiser (cop picks the neighbour
+        with shortest BFS path to the thief).  BFS == Manhattan on an open
+        grid, so behaviour is identical to the Manhattan model with no
+        barriers; the BFS model generalises correctly once barriers are
+        placed, making the thief robust to any opponent cop strategy.
         Mobility bonus: len(adj(new_thief)) — the LOCAL adjacency count (2 at
         corners, 3 at edges, 4 at interior). Flood fill counts all reachable
         cells, which is always n² on an open grid (constant, useless). The
         adjacency count is the right measure: it distinguishes corners from
         edges and penalises positions where the cop can immediately restrict
-        the thief's escape options.  weight 1.2 ensures that when cop-
-        responsive BFS ties (which happens near walls), the interior cell
-        beats the corner.
+        the thief's escape options.
 
 Barriers — Greedy max-reachability-reduction: block the cop-adjacent cell
            that most shrinks the thief's BFS flood-fill area (sector isolation
@@ -96,8 +95,11 @@ def _manhattan(a: Coordinate, b: Coordinate) -> int:
 
 def _thief_mm(thief: Coordinate, cop: Coordinate, n: int, walls: frozenset,
               depth: int, thief_turn: bool) -> float:
-    """Minimax from thief's perspective.  Cop is modelled as a Manhattan
-    minimiser — matching Ahmad's algorithm exactly.  The thief maximises.
+    """Minimax from thief's perspective.  Cop is modelled as a BFS minimiser
+    (picks the neighbour with shortest BFS path to the thief).  BFS == Manhattan
+    on an open grid so behaviour matches any Manhattan cop; with barriers the BFS
+    model correctly handles walls that Manhattan ignores, making the thief robust
+    to any opponent cop strategy.  The thief maximises.
     Leaf: BFS distance + adjacency-count bonus so the search correctly
     penalises corner dead-ends (adj 2) vs open interior cells (adj 4).
     """
@@ -113,7 +115,7 @@ def _thief_mm(thief: Coordinate, cop: Coordinate, n: int, walls: frozenset,
         return best
     else:
         cop_opts = _adj(cop, n, walls) + [cop]
-        cop_next = min(cop_opts, key=lambda c: _manhattan(c, thief))
+        cop_next = min(cop_opts, key=lambda c: _bfs(c, thief, n, walls))
         return _thief_mm(thief, cop_next, n, walls, depth - 1, True)
 
 
@@ -183,7 +185,6 @@ class SmartPoliceBrain(PoliceBrain):
         thief = most_likely_position(view.belief)
         best_d, best_v = view.legal_moves[0], float("inf")
         for d in view.legal_moves:
-            # depth-1 = 2 (even): leaf falls AFTER cop's last move — favourable
             v = _mm(view.own_position.translated(d), thief, n, w,
                     _POLICE_DEPTH - 1, False, float("-inf"), float("inf"))
             if v < best_v:
